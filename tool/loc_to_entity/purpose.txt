@@ -1,0 +1,1 @@
+Vic3 script corpus tool: loc_to_entity. Code: tool/_script_find/tools.py (+ service/1836/find shim).

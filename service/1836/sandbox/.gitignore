@@ -1,0 +1,4 @@
+sessions/
+_trash/
+__pycache__/
+*.py[cod]

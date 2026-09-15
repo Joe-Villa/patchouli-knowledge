@@ -1,0 +1,1 @@
+Shared Vic3 script find tools (loc_*, registry, route, grep helpers). Loaded via service/1836/find/tools.py shim.

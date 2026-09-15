@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <title>帕秋莉 · 控制台登录</title>
+  <style>
+    :root {
+      --bg: #1a1614;
+      --panel: #2a2420;
+      --ink: #f5f0e8;
+      --muted: #a89f94;
+      --accent: #c45c3e;
+      --line: #4a423c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      display: grid;
+      place-items: center;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      padding: 1.25rem;
+    }
+    .card {
+      width: min(420px, 100%);
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+    h1 { margin: 0 0 0.35rem; font-size: 1.25rem; }
+    p { margin: 0 0 1rem; color: var(--muted); font-size: 0.9rem; line-height: 1.5; }
+    label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 0.35rem; }
+    input {
+      width: 100%;
+      padding: 0.75rem 0.85rem;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #151210;
+      color: var(--ink);
+      font-size: 1rem;
+    }
+    button {
+      margin-top: 1rem;
+      width: 100%;
+      padding: 0.85rem;
+      border: 0;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    button:disabled { opacity: 0.6; }
+    .err { color: #f87171; min-height: 1.25rem; margin-top: 0.75rem; font-size: 0.85rem; }
+    .dev { font-family: ui-monospace, monospace; color: var(--muted); font-size: 0.75rem; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>帕秋莉控制台</h1>
+    <p>当前设备尚未授权。输入密码后将永久记录此设备，下次可直接进入（按设备，不按 IP）。</p>
+    <p class="dev" id="dev">设备 …</p>
+    <label for="pwd">密码</label>
+    <input id="pwd" type="password" autocomplete="current-password" />
+    <button type="button" id="go">进入</button>
+    <div class="err" id="err"></div>
+  </div>
+  <script>
+    const DEVICE_KEY = "patchouli_console_device_v1";
+    const DEVICE_HEADER = "X-Console-Device";
+    const devEl = document.getElementById("dev");
+    const errEl = document.getElementById("err");
+    const goBtn = document.getElementById("go");
+
+    function newId() {
+      if (crypto.randomUUID) return crypto.randomUUID().replace(/-/g, "").slice(0, 32);
+      return "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+    }
+
+    function ensureDeviceId() {
+      try {
+        const existing = localStorage.getItem(DEVICE_KEY);
+        if (existing && /^[A-Za-z0-9_-]{1,64}$/.test(existing)) return existing;
+      } catch (_) {}
+      const id = "d" + newId().slice(0, 31);
+      try { localStorage.setItem(DEVICE_KEY, id); } catch (_) {}
+      return id;
+    }
+
+    const deviceId = ensureDeviceId();
+    devEl.textContent = "您的设备：" + deviceId;
+
+    function goHome() {
+      location.replace("/?_=" + Date.now());
+    }
+
+    fetch("/api/auth/status", {
+      cache: "no-store",
+      credentials: "same-origin",
+      headers: { [DEVICE_HEADER]: deviceId },
+    })
+      .then(r => r.json())
+      .then(d => { if (d.authenticated) goHome(); })
+      .catch(() => {});
+
+    async function login() {
+      errEl.textContent = "";
+      goBtn.disabled = true;
+      try {
+        const password = document.getElementById("pwd").value;
+        const r = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            [DEVICE_HEADER]: deviceId,
+          },
+          cache: "no-store",
+          credentials: "same-origin",
+          body: JSON.stringify({ password, device_id: deviceId }),
+        });
+        if (!r.ok) {
+          const d = await r.json().catch(() => ({}));
+          errEl.textContent = d.detail === "密码错误" ? "密码错误" : (d.detail || "登录失败");
+          return;
+        }
+        goHome();
+      } catch (e) {
+        errEl.textContent = "网络异常，请重试";
+      } finally {
+        goBtn.disabled = false;
+      }
+    }
+    goBtn.onclick = login;
+    document.getElementById("pwd").addEventListener("keydown", e => {
+      if (e.key === "Enter") login();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "schema": "patchouli_qa.tools.v1",
+  "note": "第一版：工具实现在引擎内；manifest 只声明启用清单。",
+  "tools": [
+    "route_query",
+    "loc_search",
+    "loc_lookup",
+    "loc_to_entity",
+    "registry_lookup",
+    "read_block",
+    "read_lines",
+    "grep_text",
+    "run_code",
+    "submit_evidence_package"
+  ]
+}

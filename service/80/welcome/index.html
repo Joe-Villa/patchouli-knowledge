@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="description" content="帕秋莉的知识：根据实际游戏数据回答问题" />
+  <title>帕秋莉的知识</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:opsz,wght@9..40,400;9..40,600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #1a1410;
+      --muted: #6e6358;
+      --line: #cfc4b2;
+      --accent: #8b2e2e;
+      --glow: rgba(26, 20, 16, 0.08);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      color: var(--ink);
+      font-family: "DM Sans", system-ui, sans-serif;
+      background:
+        radial-gradient(1200px 600px at 10% -10%, #f7f1e6 0%, transparent 55%),
+        radial-gradient(900px 500px at 100% 0%, #e7dcc8 0%, transparent 50%),
+        linear-gradient(180deg, #f3ece0 0%, #e4d9c6 100%);
+      line-height: 1.55;
+    }
+    .stage {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: clamp(1.5rem, 4vw, 3rem) 1.25rem 3rem;
+    }
+    .hero {
+      display: grid;
+      gap: 1.25rem;
+      justify-items: center;
+      text-align: center;
+      padding-bottom: 1.75rem;
+      border-bottom: 1px solid var(--line);
+      animation: rise 0.7s ease-out both;
+    }
+    .portrait {
+      width: min(220px, 56vw);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      object-fit: cover;
+      box-shadow: 0 18px 40px var(--glow);
+      border: 3px solid rgba(255,255,255,0.65);
+    }
+    h1 {
+      margin: 0;
+      font-family: "Instrument Serif", Georgia, serif;
+      font-weight: 400;
+      font-size: clamp(2.2rem, 7vw, 3.2rem);
+      letter-spacing: 0.02em;
+      line-height: 1.1;
+    }
+    .tagline {
+      margin: 0;
+      max-width: 34em;
+      color: var(--muted);
+      font-size: 1.02rem;
+    }
+    .links {
+      margin-top: 1.75rem;
+      animation: rise 0.7s ease-out 0.12s both;
+    }
+    .links h2 {
+      margin: 0 0 0.85rem;
+      font-family: "Instrument Serif", Georgia, serif;
+      font-weight: 400;
+      font-size: 1.55rem;
+    }
+    ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    li {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0.75rem 1rem;
+      align-items: baseline;
+      padding: 0.95rem 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .label { font-weight: 600; }
+    a.go {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.2s ease;
+      white-space: nowrap;
+    }
+    a.go:hover { border-bottom-color: var(--accent); }
+    a.go:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .soon {
+      color: var(--muted);
+      font-size: 0.9rem;
+      white-space: nowrap;
+    }
+    footer {
+      margin-top: 2.5rem;
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-align: center;
+      animation: rise 0.7s ease-out 0.22s both;
+    }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="stage">
+    <header class="hero">
+      <img class="portrait" src="/assets/patchouli.png" width="220" height="220" alt="帕秋莉" />
+      <h1>帕秋莉的知识</h1>
+      <p class="tagline">
+        根据实际游戏数据回答问题——查脚本、读数值、对机制，而不是凭印象编攻略。
+      </p>
+    </header>
+
+    <!-- 本页只维护链接清单：可点 = 有 URL；不可点 = 尚无 URL。不感知背后有哪些服务。 -->
+    <section class="links" aria-label="链接">
+      <h2>链接</h2>
+      <ul id="links"></ul>
+    </section>
+
+    <footer>帕秋莉 · 按游戏数据作答</footer>
+  </main>
+  <script>
+    const host = location.hostname || "127.0.0.1";
+    const proto = location.protocol === "https:" ? "https:" : "http:";
+    // 仅链接：label + 可选 url。url 为空表示暂不可点。
+    const links = [
+      { label: "欧陆风云 V", url: null },
+      { label: "欧陆风云 IV", url: null },
+      { label: "维多利亚 3", url: `${proto}//${host}:1836/` },
+      { label: "模组社区", url: `${proto}//${host}:1837/` },
+      { label: "模组卡片", url: `${proto}//${host}:1838/` },
+      { label: "钢铁雄心 IV", url: null },
+      { label: "群星", url: null },
+    ];
+    document.getElementById("links").innerHTML = links.map((it) => {
+      const right = it.url
+        ? `<a class="go" href="${it.url}">打开</a>`
+        : `<span class="soon">开发中</span>`;
+      return `<li><span class="label">${it.label}</span>${right}</li>`;
+    }).join("");
+  </script>
+</body>
+</html>

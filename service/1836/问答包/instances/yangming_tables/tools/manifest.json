@@ -1,0 +1,13 @@
+{
+  "schema": "patchouli_qa.tools.v1",
+  "note": "CSV 姓名语料：主要靠 run_code/grep/read_lines；loc_* 可用但非主路径",
+  "tools": [
+    "route_query",
+    "loc_search",
+    "loc_lookup",
+    "grep_text",
+    "read_lines",
+    "run_code",
+    "submit_evidence_package"
+  ]
+}

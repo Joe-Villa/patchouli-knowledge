@@ -1,0 +1,27 @@
+# Patchouli 单次请求配置示例（路径相对本文件所在目录，可改成绝对路径）
+#
+# 用法：
+#   from patchouli import RequestConfig, run_request
+#   cfg = RequestConfig.from_file("config.example.toml")
+#   print(run_request("问题…", cfg).answer)
+
+game_root = "../data/game"
+sessions_root = "../sandbox/sessions"
+log_dir = "./logs"
+env_file = "../llm/.env"
+mods_root = "../data/mods"
+# mods_catalog = "../data/mods_catalog.json"
+# auto_select_corpus = true
+
+# loc_db = "../data/game/localization.sqlite"  # 可省略；选定 corpus 后默认用其下 sqlite
+
+# model = "deepseek-chat"
+# base_url = "https://api.deepseek.com"
+# llm_timeout_sec = 90
+
+max_rounds = 12
+submit_grace = 3
+max_wall_sec = 180.0
+lang = "simp_chinese"
+# skip_answer = false
+# legacy_side_logs = false   # true 时额外写旧式分散 find/answer 日志

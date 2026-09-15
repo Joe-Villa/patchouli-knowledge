@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#12160f" />
+  <title>模组卡片 · 帕秋莉</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #12160f;
+      --bg2: #1a2116;
+      --ink: #e8ecdf;
+      --muted: #9aa38c;
+      --line: #2c3526;
+      --paper: #1e2619;
+      --accent: #c4a35a;
+      --accent-dim: rgba(196, 163, 90, 0.18);
+      --ok: #8fbc8f;
+      --danger: #c47a7a;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      height: 100%;
+      color: var(--ink);
+      font-family: "IBM Plex Sans", "Noto Sans SC", "PingFang SC", sans-serif;
+      background: var(--bg);
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      min-height: 100dvh;
+      background:
+        radial-gradient(ellipse 90% 50% at 20% -5%, #24301c 0%, transparent 50%),
+        radial-gradient(ellipse 70% 40% at 100% 0%, #2a2414 0%, transparent 45%),
+        linear-gradient(180deg, #12160f 0%, #0e120c 100%);
+    }
+    .app {
+      max-width: 56rem;
+      margin: 0 auto;
+      min-height: 100dvh;
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      padding-top: var(--safe-top);
+    }
+    header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.9rem 1rem 0.7rem;
+      border-bottom: 1px solid var(--line);
+      background: rgba(18, 22, 15, 0.9);
+      backdrop-filter: blur(8px);
+    }
+    h1 {
+      margin: 0;
+      font-family: Fraunces, Georgia, serif;
+      font-weight: 600;
+      font-size: 1.35rem;
+      letter-spacing: 0.01em;
+    }
+    .meta {
+      color: var(--muted);
+      font-size: 0.82rem;
+      white-space: nowrap;
+    }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+      padding: 0.65rem 1rem;
+      border-bottom: 1px solid var(--line);
+      background: rgba(26, 33, 22, 0.55);
+    }
+    .toolbar label {
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+    select, button, input, textarea {
+      font: inherit;
+      color: var(--ink);
+    }
+    select {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 0.45rem;
+      padding: 0.35rem 0.55rem;
+    }
+    .mode-pill {
+      display: inline-flex;
+      gap: 0.25rem;
+      margin-left: auto;
+    }
+    .mode-pill button {
+      border: 1px solid var(--line);
+      background: transparent;
+      border-radius: 999px;
+      padding: 0.28rem 0.7rem;
+      font-size: 0.8rem;
+      cursor: pointer;
+      color: var(--muted);
+    }
+    .mode-pill button.active {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    main {
+      overflow: auto;
+      padding: 0.85rem 1rem 1rem;
+      padding-bottom: calc(5.5rem + var(--safe-bottom));
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+      gap: 0.75rem;
+    }
+    .card {
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+      padding: 0.75rem;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 0.55rem;
+      cursor: pointer;
+      text-align: left;
+      transition: border-color 0.15s ease, transform 0.15s ease;
+      animation: rise 0.35s ease both;
+    }
+    .card:hover, .card:focus-visible {
+      border-color: var(--accent);
+      outline: none;
+      transform: translateY(-1px);
+    }
+    .card .thumb {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      object-fit: cover;
+      border-radius: 0.35rem;
+      background: #0c100a;
+      border: 1px solid var(--line);
+    }
+    .card .title {
+      font-family: Fraunces, Georgia, serif;
+      font-size: 1.02rem;
+      font-weight: 500;
+      line-height: 1.25;
+      margin: 0;
+    }
+    .card .title-alt {
+      margin: 0;
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.3;
+    }
+    .lang-badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-right: 0.35rem;
+    }
+    .bi-block {
+      margin: 0 0 0.85rem;
+      padding: 0.65rem 0.7rem;
+      border: 1px solid var(--line);
+      border-radius: 0.45rem;
+      background: rgba(0,0,0,0.15);
+    }
+    .bi-block .lang {
+      font-size: 0.7rem;
+      color: var(--accent);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 0.25rem;
+    }
+    .bi-block .ttl {
+      font-family: Fraunces, Georgia, serif;
+      font-size: 1.05rem;
+      margin: 0 0 0.45rem;
+      line-height: 1.25;
+    }
+    .same-note {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin: 0 0 0.75rem;
+    }
+    .card .id {
+      font-size: 0.75rem;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem 0.65rem;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .stats b { color: var(--ink); font-weight: 600; }
+    .tags {
+      font-size: 0.75rem;
+      color: var(--accent);
+      opacity: 0.9;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .empty, .status {
+      color: var(--muted);
+      text-align: center;
+      padding: 2rem 1rem;
+    }
+    .status.err { color: var(--danger); }
+    .more-wrap {
+      display: flex;
+      justify-content: center;
+      padding: 1rem 0 0.25rem;
+    }
+    .more-wrap button, .composer button {
+      border: 1px solid var(--line);
+      background: var(--bg2);
+      border-radius: 0.55rem;
+      padding: 0.55rem 1rem;
+      cursor: pointer;
+    }
+    .more-wrap button:hover, .composer button:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .composer {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      padding: 0.65rem 1rem calc(0.65rem + var(--safe-bottom));
+      background: linear-gradient(180deg, transparent, rgba(18,22,15,0.95) 28%);
+      border-top: 1px solid var(--line);
+    }
+    .composer-inner {
+      max-width: 56rem;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0.5rem;
+      align-items: end;
+    }
+    .composer textarea {
+      width: 100%;
+      min-height: 2.6rem;
+      max-height: 6rem;
+      resize: none;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 0.65rem;
+      padding: 0.65rem 0.75rem;
+      line-height: 1.4;
+    }
+    .composer textarea:focus {
+      outline: 2px solid var(--accent-dim);
+      border-color: var(--accent);
+    }
+    .composer .hint {
+      grid-column: 1 / -1;
+      margin: 0;
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+    .drawer {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      display: none;
+      background: rgba(0,0,0,0.55);
+    }
+    .drawer.open { display: block; }
+    .drawer-panel {
+      position: absolute;
+      right: 0; top: 0; bottom: 0;
+      width: min(36rem, 100%);
+      background: var(--bg2);
+      border-left: 1px solid var(--line);
+      overflow: auto;
+      padding: 1rem 1rem calc(1.25rem + var(--safe-bottom));
+      animation: slide 0.22s ease;
+    }
+    .drawer-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
+      align-items: flex-start;
+      margin-bottom: 0.85rem;
+    }
+    .drawer-head h2 {
+      margin: 0;
+      font-family: Fraunces, Georgia, serif;
+      font-size: 1.35rem;
+      font-weight: 600;
+      line-height: 1.25;
+    }
+    .drawer-head button {
+      border: 1px solid var(--line);
+      background: transparent;
+      border-radius: 0.45rem;
+      padding: 0.35rem 0.65rem;
+      cursor: pointer;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+    .preview {
+      width: 100%;
+      max-height: 14rem;
+      object-fit: cover;
+      border-radius: 0.45rem;
+      border: 1px solid var(--line);
+      margin-bottom: 0.85rem;
+      background: #0c100a;
+    }
+    .field {
+      margin: 0 0 0.7rem;
+      padding-bottom: 0.65rem;
+      border-bottom: 1px solid var(--line);
+    }
+    .field .k {
+      display: block;
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-bottom: 0.2rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .field .v {
+      font-size: 0.92rem;
+      word-break: break-word;
+      white-space: pre-wrap;
+      font-variant-numeric: tabular-nums;
+    }
+    .field .v a { color: var(--accent); }
+    .desc-bb {
+      white-space: pre-wrap;
+      line-height: 1.5;
+      font-size: 0.88rem;
+    }
+    .desc-bb b { font-weight: 600; }
+    .desc-bb .h { font-family: Fraunces, Georgia, serif; font-size: 1.05rem; margin: 0.5rem 0 0.25rem; }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: none; }
+    }
+    @keyframes slide {
+      from { transform: translateX(12px); opacity: 0.6; }
+      to { transform: none; opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>模组卡片</h1>
+      <div class="meta" id="meta">加载中…</div>
+    </header>
+    <div class="toolbar">
+      <label for="sort">排序</label>
+      <select id="sort">
+        <option value="subscriptions">订阅量</option>
+        <option value="updated">最近更新</option>
+        <option value="created">创建时间</option>
+        <option value="title">标题</option>
+        <option value="id">Mod ID</option>
+      </select>
+      <div class="mode-pill">
+        <button type="button" class="active" id="btnBrowse" data-mode="browse">浏览</button>
+        <button type="button" id="btnSearchMode" data-mode="search">搜索结果</button>
+      </div>
+    </div>
+    <main>
+      <div id="status" class="status" hidden></div>
+      <div class="grid" id="grid"></div>
+      <div class="more-wrap" id="moreWrap" hidden>
+        <button type="button" id="btnMore">加载更多</button>
+      </div>
+      <div id="empty" class="empty" hidden>没有匹配的卡片</div>
+    </main>
+    <form class="composer" id="composer">
+      <div class="composer-inner">
+        <textarea id="q" rows="1" placeholder="输入 Mod ID 或模组名…" autocomplete="off"></textarea>
+        <button type="submit">搜索</button>
+        <p class="hint">纯数字按 Mod ID；其它按标题或作者名。点卡片看全部字段。</p>
+      </div>
+    </form>
+  </div>
+
+  <div class="drawer" id="drawer" aria-hidden="true">
+    <div class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby="dTitle">
+      <div class="drawer-head">
+        <h2 id="dTitle">…</h2>
+        <button type="button" id="btnClose">关闭</button>
+      </div>
+      <div id="detail"></div>
+    </div>
+  </div>
+
+  <script>
+    const PAGE = 24;
+    const state = {
+      mode: "browse",
+      offset: 0,
+      total: 0,
+      sort: "subscriptions",
+      lastQ: "",
+      loading: false,
+    };
+
+    const el = {
+      meta: document.getElementById("meta"),
+      grid: document.getElementById("grid"),
+      status: document.getElementById("status"),
+      empty: document.getElementById("empty"),
+      moreWrap: document.getElementById("moreWrap"),
+      btnMore: document.getElementById("btnMore"),
+      sort: document.getElementById("sort"),
+      composer: document.getElementById("composer"),
+      q: document.getElementById("q"),
+      drawer: document.getElementById("drawer"),
+      detail: document.getElementById("detail"),
+      dTitle: document.getElementById("dTitle"),
+      btnClose: document.getElementById("btnClose"),
+      btnBrowse: document.getElementById("btnBrowse"),
+      btnSearchMode: document.getElementById("btnSearchMode"),
+    };
+
+    function fmtNum(n) {
+      if (n == null || n === "") return "—";
+      const x = Number(n);
+      if (!Number.isFinite(x)) return String(n);
+      return x.toLocaleString("zh-CN");
+    }
+    function fmtBytes(raw) {
+      const n = Number(raw);
+      if (!Number.isFinite(n) || n <= 0) return raw || "—";
+      if (n < 1024) return n + " B";
+      if (n < 1024 ** 2) return (n / 1024).toFixed(1) + " KB";
+      if (n < 1024 ** 3) return (n / 1024 ** 2).toFixed(1) + " MB";
+      return (n / 1024 ** 3).toFixed(2) + " GB";
+    }
+    function esc(s) {
+      return String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+    function bbRough(text) {
+      let t = esc(text || "");
+      t = t.replace(/\[h1\]([\s\S]*?)\[\/h1\]/gi, '<div class="h">$1</div>');
+      t = t.replace(/\[h2\]([\s\S]*?)\[\/h2\]/gi, '<div class="h">$1</div>');
+      t = t.replace(/\[h3\]([\s\S]*?)\[\/h3\]/gi, '<div class="h">$1</div>');
+      t = t.replace(/\[b\]([\s\S]*?)\[\/b\]/gi, "<b>$1</b>");
+      t = t.replace(/\[i\]([\s\S]*?)\[\/i\]/gi, "<i>$1</i>");
+      t = t.replace(/\[url=([^\]]+)\]([\s\S]*?)\[\/url\]/gi, '<a href="$1" target="_blank" rel="noopener">$2</a>');
+      t = t.replace(/\[url\]([\s\S]*?)\[\/url\]/gi, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+      t = t.replace(/\[list\]/gi, "").replace(/\[\/list\]/gi, "");
+      t = t.replace(/\[\*\]/gi, "• ");
+      t = t.replace(/\[\/?[^\]]+\]/g, "");
+      return t;
+    }
+    function setMode(mode) {
+      state.mode = mode;
+      el.btnBrowse.classList.toggle("active", mode === "browse");
+      el.btnSearchMode.classList.toggle("active", mode === "search");
+    }
+    function showStatus(msg, isErr) {
+      if (!msg) {
+        el.status.hidden = true;
+        el.status.textContent = "";
+        return;
+      }
+      el.status.hidden = false;
+      el.status.className = "status" + (isErr ? " err" : "");
+      el.status.textContent = msg;
+    }
+    function cardHtml(item) {
+      const thumb = item.preview_url
+        ? `<img class="thumb" src="${esc(item.preview_url)}" alt="" loading="lazy" referrerpolicy="no-referrer" />`
+        : "";
+      const author = item.author || "";
+      const zh = item.title_zh || item.title || "(无标题)";
+      const en = item.title_en || item.title || "";
+      const same = zh === en;
+      const alt = same ? "" : `<p class="title-alt"><span class="lang-badge">EN</span>${esc(en)}</p>`;
+      return `
+        <button type="button" class="card" data-id="${esc(item.id)}">
+          ${thumb}
+          <p class="title"><span class="lang-badge">中</span>${esc(zh)}</p>
+          ${alt}
+          <div class="id">${esc(item.id)}${author ? ` · ${esc(author)}` : ""}</div>
+          <div class="stats">
+            <span>订 <b>${fmtNum(item.subscriptions)}</b></span>
+            <span>藏 <b>${fmtNum(item.favorited)}</b></span>
+            <span>览 <b>${fmtNum(item.views)}</b></span>
+          </div>
+          <div class="tags">${esc(item.tags || "")}</div>
+        </button>`;
+    }
+    function renderItems(items, append) {
+      if (!append) el.grid.innerHTML = "";
+      el.grid.insertAdjacentHTML("beforeend", items.map(cardHtml).join(""));
+      el.empty.hidden = el.grid.children.length > 0;
+      el.moreWrap.hidden = !(state.mode === "browse" && state.offset < state.total);
+    }
+    async function loadBrowse(reset) {
+      if (state.loading) return;
+      state.loading = true;
+      if (reset) {
+        state.offset = 0;
+        el.grid.innerHTML = "";
+      }
+      showStatus(reset ? "加载中…" : "");
+      try {
+        const u = new URL("/api/browse", location.origin);
+        u.searchParams.set("offset", String(state.offset));
+        u.searchParams.set("limit", String(PAGE));
+        u.searchParams.set("sort", state.sort);
+        const r = await fetch(u);
+        const j = await r.json();
+        if (!j.ok) throw new Error(j.error || "browse failed");
+        state.total = j.total;
+        state.offset = j.offset + j.items.length;
+        el.meta.textContent = `${fmtNum(j.total)} 张卡片`;
+        setMode("browse");
+        showStatus("");
+        renderItems(j.items, !reset);
+      } catch (e) {
+        showStatus(String(e.message || e), true);
+      } finally {
+        state.loading = false;
+      }
+    }
+    async function doSearch(q) {
+      const query = (q || "").trim();
+      if (!query) {
+        setMode("browse");
+        return loadBrowse(true);
+      }
+      if (state.loading) return;
+      state.loading = true;
+      state.lastQ = query;
+      setMode("search");
+      showStatus("搜索中…");
+      el.grid.innerHTML = "";
+      el.moreWrap.hidden = true;
+      try {
+        const u = new URL("/api/search", location.origin);
+        u.searchParams.set("q", query);
+        u.searchParams.set("limit", "60");
+        const r = await fetch(u);
+        const j = await r.json();
+        if (!j.ok) throw new Error(j.error || "search failed");
+        el.meta.textContent = `搜索「${query}」· ${j.count} 条`;
+        showStatus("");
+        renderItems(j.items, false);
+      } catch (e) {
+        showStatus(String(e.message || e), true);
+      } finally {
+        state.loading = false;
+      }
+    }
+    function field(k, vHtml) {
+      return `<div class="field"><span class="k">${esc(k)}</span><div class="v">${vHtml}</div></div>`;
+    }
+    async function openCard(id) {
+      el.drawer.classList.add("open");
+      el.drawer.setAttribute("aria-hidden", "false");
+      el.dTitle.textContent = "加载中…";
+      el.detail.innerHTML = "";
+      try {
+        const r = await fetch(`/api/mod/${encodeURIComponent(id)}`);
+        const j = await r.json();
+        if (!j.ok) throw new Error(j.error || "not found");
+        const m = j.item;
+        const zhTitle = m.title_zh || m.title || "(无标题)";
+        const enTitle = m.title_en || m.title || "";
+        const sameTitle = zhTitle === enTitle;
+        el.dTitle.textContent = zhTitle;
+        const preview = m.preview_url
+          ? `<img class="preview" src="${esc(m.preview_url)}" alt="" referrerpolicy="no-referrer" />`
+          : "";
+        const url = m.url
+          ? `<a href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.url)}</a>`
+          : "—";
+        const note = sameTitle
+          ? `<p class="same-note">中英标题相同</p>`
+          : `<p class="same-note">双语标题</p>`;
+        const titlesHtml = sameTitle
+          ? `<div class="bi-block"><div class="lang">标题</div><p class="ttl">${esc(zhTitle)}</p></div>`
+          : [
+              `<div class="bi-block"><div class="lang">中文标题</div><p class="ttl">${esc(zhTitle)}</p></div>`,
+              `<div class="bi-block"><div class="lang">English title</div><p class="ttl">${esc(enTitle)}</p></div>`,
+            ].join("");
+        el.detail.innerHTML = [
+          preview,
+          note,
+          titlesHtml,
+          field("description", `<div class="desc-bb">${bbRough(m.description || "")}</div>`),
+          field("id", esc(m.id)),
+          field("author", esc(m.author || "—")),
+          field("creator (SteamID)", esc(m.creator)),
+          field("result", esc(m.result)),
+          field("title (raw)", esc(m.title)),
+          field("title_zh", esc(m.title_zh || "")),
+          field("title_en", esc(m.title_en || "")),
+          field("file_size", esc(fmtBytes(m.file_size)) + ` <span style="color:var(--muted)">(${esc(m.file_size)})</span>`),
+          field("preview_url", m.preview_url ? `<a href="${esc(m.preview_url)}" target="_blank" rel="noopener">${esc(m.preview_url)}</a>` : "—"),
+          field("time_created", esc(m.time_created)),
+          field("time_updated", esc(m.time_updated)),
+          field("created", esc(m.created)),
+          field("updated", esc(m.updated)),
+          field("subscriptions", esc(fmtNum(m.subscriptions))),
+          field("favorited", esc(fmtNum(m.favorited))),
+          field("views", esc(fmtNum(m.views))),
+          field("lifetime_subscriptions", esc(fmtNum(m.lifetime_subscriptions))),
+          field("lifetime_favorited", esc(fmtNum(m.lifetime_favorited))),
+          field("lifetime_playtime", esc(fmtNum(m.lifetime_playtime))),
+          field("tags", esc(m.tags)),
+          field("url", url),
+        ].join("");
+      } catch (e) {
+        el.dTitle.textContent = "打开失败";
+        el.detail.innerHTML = field("error", esc(e.message || e));
+      }
+    }
+    function closeDrawer() {
+      el.drawer.classList.remove("open");
+      el.drawer.setAttribute("aria-hidden", "true");
+    }
+
+    el.grid.addEventListener("click", (ev) => {
+      const btn = ev.target.closest(".card");
+      if (btn) openCard(btn.dataset.id);
+    });
+    el.btnMore.addEventListener("click", () => loadBrowse(false));
+    el.sort.addEventListener("change", () => {
+      state.sort = el.sort.value;
+      if (state.mode === "browse") loadBrowse(true);
+    });
+    el.btnBrowse.addEventListener("click", () => loadBrowse(true));
+    el.btnSearchMode.addEventListener("click", () => {
+      if (state.lastQ) doSearch(state.lastQ);
+      else el.q.focus();
+    });
+    el.composer.addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      doSearch(el.q.value);
+    });
+    el.q.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" && !ev.shiftKey) {
+        ev.preventDefault();
+        doSearch(el.q.value);
+      }
+    });
+    el.btnClose.addEventListener("click", closeDrawer);
+    el.drawer.addEventListener("click", (ev) => {
+      if (ev.target === el.drawer) closeDrawer();
+    });
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape") closeDrawer();
+    });
+
+    fetch("/health").then((r) => r.json()).then((j) => {
+      if (j.ok) el.meta.textContent = `${fmtNum(j.mods)} 张卡片`;
+      else el.meta.textContent = j.error || "未就绪";
+    }).catch(() => {});
+    loadBrowse(true);
+  </script>
+</body>
+</html>

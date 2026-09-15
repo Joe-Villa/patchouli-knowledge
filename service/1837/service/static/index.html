@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0e1218" />
+  <title>模组社区 · 帕秋莉</title>
+  <style>
+    :root {
+      --bg: #0e1218;
+      --bg-elev: #161c26;
+      --ink: #e6eaf0;
+      --muted: #8b95a5;
+      --paper: #1c2430;
+      --line: #2a3342;
+      --user: #c9d0db;
+      --accent: #a89bc8;
+      --accent-dim: rgba(168, 155, 200, 0.22);
+      --status: #7a8699;
+      --danger: #c47a7a;
+      --ok: #8fbc8f;
+      --neg: #e09090;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --header-h: 3.25rem;
+      --composer-min: 3.75rem;
+      --drawer-w: min(18rem, 86vw);
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "PingFang SC", "Noto Sans SC", "Source Han Sans SC",
+        "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-text-size-adjust: 100%;
+    }
+    body {
+      min-height: 100dvh;
+      background:
+        radial-gradient(ellipse 120% 60% at 50% -10%, #1a2230 0%, transparent 55%),
+        linear-gradient(180deg, #0e1218 0%, #0b0f14 100%);
+    }
+    .app {
+      max-width: 40rem;
+      margin: 0 auto;
+      height: 100dvh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      padding-top: var(--safe-top);
+      position: relative;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      min-height: var(--header-h);
+      padding: 0.65rem 0.75rem;
+      border-bottom: 1px solid var(--line);
+      background: rgba(14, 18, 24, 0.92);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      min-width: 0;
+      flex: 1;
+    }
+    .icon-btn {
+      flex-shrink: 0;
+      min-width: 2.4rem;
+      min-height: 2.4rem;
+      padding: 0 0.55rem;
+      border: 1px solid var(--line);
+      border-radius: 0.65rem;
+      background: var(--bg-elev);
+      color: var(--ink);
+      font: inherit;
+      font-size: 0.82rem;
+      cursor: pointer;
+    }
+    .icon-btn:active { transform: scale(0.96); }
+    .brand {
+      display: flex;
+      flex-direction: column;
+      gap: 0.1rem;
+      min-width: 0;
+    }
+    .brand h1 {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .brand .sub {
+      font-size: 0.72rem;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #conn {
+      flex-shrink: 0;
+      font-size: 0.72rem;
+      color: var(--muted);
+      padding: 0.28rem 0.55rem;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--bg-elev);
+    }
+    #conn.ok { color: var(--accent); border-color: var(--accent-dim); }
+    #conn.bad { color: var(--danger); }
+
+    #log {
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 0.85rem 0.9rem 0.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.7rem;
+      overscroll-behavior: contain;
+    }
+    .msg {
+      max-width: 92%;
+      padding: 0.7rem 0.85rem;
+      line-height: 1.55;
+      word-break: break-word;
+      font-size: 0.95rem;
+      animation: msgIn 0.28s ease-out;
+    }
+    @keyframes msgIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: none; }
+    }
+    .msg.user {
+      align-self: flex-end;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 1rem 1rem 0.25rem 1rem;
+      color: var(--user);
+      white-space: pre-wrap;
+    }
+    .msg.bot {
+      align-self: flex-start;
+      background: transparent;
+      border-left: 2px solid var(--accent);
+      border-radius: 0;
+      padding-left: 0.8rem;
+      color: var(--ink);
+    }
+    .msg.status {
+      align-self: center;
+      max-width: 95%;
+      color: var(--status);
+      font-size: 0.8rem;
+      border: none;
+      padding: 0.2rem 0.5rem;
+      text-align: center;
+    }
+    .msg .label {
+      display: block;
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-bottom: 0.25rem;
+    }
+    .msg .mod-title {
+      font-weight: 600;
+      margin-bottom: 0.2rem;
+    }
+    .msg .mod-title a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .msg .mod-title a:hover { text-decoration: underline; }
+    .msg .mod-meta {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+      line-height: 1.4;
+    }
+    .msg .mod-hook {
+      margin-top: 0.45rem;
+      font-size: 0.92rem;
+      line-height: 1.5;
+      color: var(--ink);
+    }
+    .msg .mod-hook .label {
+      display: block;
+      margin-bottom: 0.2rem;
+    }
+    .msg .scores {
+      font-size: 0.82rem;
+      font-variant-numeric: tabular-nums;
+      color: var(--muted);
+      display: grid;
+      gap: 0.12rem;
+      margin-top: 0.35rem;
+    }
+    .scores .pos { color: var(--ok); }
+    .scores .neg { color: var(--neg); }
+    .filters {
+      margin: 0;
+      white-space: pre-wrap;
+      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .bottom {
+      border-top: 1px solid var(--line);
+      background: rgba(14, 18, 24, 0.96);
+      padding-bottom: var(--safe-bottom);
+    }
+    form {
+      display: flex;
+      align-items: flex-end;
+      gap: 0.55rem;
+      padding: 0.55rem 0.75rem 0.75rem;
+      min-height: var(--composer-min);
+    }
+    textarea {
+      flex: 1;
+      resize: none;
+      min-height: 2.75rem;
+      max-height: 7.5rem;
+      padding: 0.7rem 0.85rem;
+      border: 1px solid var(--line);
+      background: var(--bg-elev);
+      color: var(--ink);
+      font: inherit;
+      font-size: 1rem;
+      border-radius: 1rem;
+      outline: none;
+      line-height: 1.4;
+    }
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-dim);
+    }
+    textarea::placeholder { color: var(--muted); }
+    button#send {
+      flex-shrink: 0;
+      min-width: 4.25rem;
+      min-height: 2.75rem;
+      padding: 0 1rem;
+      border: none;
+      background: var(--accent);
+      color: #12151c;
+      font: inherit;
+      font-weight: 600;
+      border-radius: 1rem;
+      cursor: pointer;
+    }
+    button#send:disabled { opacity: 0.45; cursor: wait; }
+    button#send:active:not(:disabled) { transform: scale(0.97); }
+    button#surprise {
+      flex-shrink: 0;
+      min-height: 2.75rem;
+      padding: 0 0.85rem;
+      border: 1px solid var(--accent);
+      background: transparent;
+      color: var(--accent);
+      font: inherit;
+      font-weight: 600;
+      border-radius: 1rem;
+      cursor: pointer;
+    }
+    button#surprise:disabled { opacity: 0.45; cursor: wait; }
+    .composer-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .scrim {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      z-index: 40;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    .scrim.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .drawer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: var(--drawer-w);
+      z-index: 50;
+      background: var(--bg-elev);
+      border-right: 1px solid var(--line);
+      padding: calc(var(--safe-top) + 0.75rem) 0.75rem calc(var(--safe-bottom) + 0.75rem);
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      transform: translateX(-105%);
+      transition: transform 0.22s ease;
+    }
+    .drawer.open { transform: none; }
+    .drawer-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+    .drawer-head h2 {
+      margin: 0;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+    .drawer-actions { display: flex; gap: 0.4rem; }
+    #conv-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      overflow-y: auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    #conv-list li {
+      display: flex;
+      align-items: stretch;
+      gap: 0.25rem;
+    }
+    .conv-item {
+      flex: 1;
+      min-width: 0;
+      text-align: left;
+      padding: 0.65rem 0.7rem;
+      border: 1px solid var(--line);
+      border-radius: 0.65rem;
+      background: var(--bg);
+      color: var(--ink);
+      font: inherit;
+      font-size: 0.88rem;
+      cursor: pointer;
+    }
+    .conv-item.active {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+    .conv-item .title {
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .conv-item .hint {
+      display: block;
+      margin-top: 0.2rem;
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+    .conv-item .hint.busy { color: var(--accent); }
+    .conv-del {
+      flex-shrink: 0;
+      width: 2.2rem;
+      border: 1px solid var(--line);
+      border-radius: 0.65rem;
+      background: transparent;
+      color: var(--muted);
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .conv-del:hover { color: var(--danger); border-color: var(--danger); }
+
+    @media (min-width: 640px) {
+      .app {
+        border-left: 1px solid var(--line);
+        border-right: 1px solid var(--line);
+      }
+      .brand h1 { font-size: 1.15rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="scrim" id="scrim" aria-hidden="true"></div>
+  <aside class="drawer" id="drawer" aria-label="对话列表">
+    <div class="drawer-head">
+      <h2>对话</h2>
+      <div class="drawer-actions">
+        <button type="button" class="icon-btn" id="btn-new">新建</button>
+        <button type="button" class="icon-btn" id="btn-close-drawer">关闭</button>
+      </div>
+    </div>
+    <ul id="conv-list"></ul>
+  </aside>
+
+  <div class="app">
+    <header>
+      <div class="header-left">
+        <button type="button" class="icon-btn" id="btn-menu" aria-label="打开对话列表">☰ 对话</button>
+        <div class="brand">
+          <h1 id="active-title">模组社区</h1>
+          <div class="sub">工坊问答 · 对话短记忆</div>
+        </div>
+      </div>
+      <div id="conn">连接中</div>
+    </header>
+    <div id="log" aria-live="polite"></div>
+    <div class="bottom">
+      <form id="f">
+        <textarea id="q" rows="1" placeholder="问工坊：统计、作者、找模组…" autocomplete="off"></textarea>
+        <div class="composer-actions">
+          <button type="button" id="surprise">惊喜</button>
+          <button type="submit" id="send">发送</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <script>
+    const STORAGE_KEY = "patchouli_community_chats_v1";
+    const DEVICE_KEY = "patchouli_community_device_v1";
+    const TITLE_MAX = 24;
+
+    const logEl = document.getElementById("log");
+    const connEl = document.getElementById("conn");
+    const qEl = document.getElementById("q");
+    const sendBtn = document.getElementById("send");
+    const surpriseBtn = document.getElementById("surprise");
+    const drawer = document.getElementById("drawer");
+    const scrim = document.getElementById("scrim");
+    const convListEl = document.getElementById("conv-list");
+    const activeTitleEl = document.getElementById("active-title");
+
+    /** @type {{conversations: {id:string,title:string,updatedAt:number,messages:{role:string,html:string}[],seenSurpriseIds:string[]}[], activeId:string}} */
+    let store = { conversations: [], activeId: "" };
+    /** @type {Set<string>} */
+    const busyConvs = new Set();
+    let deviceId = "";
+
+    function uid() {
+      if (crypto && crypto.randomUUID) return crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+      return "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    }
+
+    function ensureDeviceId() {
+      try {
+        const existing = localStorage.getItem(DEVICE_KEY);
+        if (existing) {
+          deviceId = existing;
+          return deviceId;
+        }
+      } catch (_) {}
+      deviceId = "d" + uid().slice(0, 31);
+      try { localStorage.setItem(DEVICE_KEY, deviceId); } catch (_) {}
+      return deviceId;
+    }
+
+    function blankConv(title) {
+      return {
+        id: uid(),
+        title: title || "新对话",
+        updatedAt: Date.now(),
+        messages: [],
+        seenSurpriseIds: [],
+      };
+    }
+
+    function loadStore() {
+      ensureDeviceId();
+      try {
+        let raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) raw = localStorage.getItem("patchouli_recommend_chats_v1");
+        if (raw) {
+          const data = JSON.parse(raw);
+          if (data && Array.isArray(data.conversations) && data.conversations.length) {
+            store = data;
+            for (const c of store.conversations) {
+              if (!Array.isArray(c.messages)) c.messages = [];
+              if (!Array.isArray(c.seenSurpriseIds)) c.seenSurpriseIds = [];
+            }
+            if (!store.conversations.some((c) => c.id === store.activeId)) {
+              store.activeId = store.conversations[0].id;
+            }
+            saveStore();
+            return;
+          }
+        }
+      } catch (_) {}
+      const first = blankConv("新对话");
+      store = { conversations: [first], activeId: first.id };
+      saveStore();
+    }
+
+    function saveStore() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+      } catch (_) {}
+    }
+
+    function activeConv() {
+      return store.conversations.find((c) => c.id === store.activeId) || null;
+    }
+
+    function clipTitle(t) {
+      t = String(t || "").trim().replace(/\s+/g, " ");
+      if (!t) return "新对话";
+      return t.length > TITLE_MAX ? t.slice(0, TITLE_MAX) + "…" : t;
+    }
+
+    function openDrawer() {
+      drawer.classList.add("open");
+      scrim.classList.add("open");
+      scrim.setAttribute("aria-hidden", "false");
+    }
+    function closeDrawer() {
+      drawer.classList.remove("open");
+      scrim.classList.remove("open");
+      scrim.setAttribute("aria-hidden", "true");
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    function signed(n, d = 2) {
+      const v = Number(n);
+      const t = (v >= 0 ? "+" : "") + v.toFixed(d);
+      const cls = v > 0 ? "pos" : v < 0 ? "neg" : "";
+      return `<span class="${cls}">${t}</span>`;
+    }
+
+    function setComposerBusy(on) {
+      const any = busyConvs.has(store.activeId) || on === true && busyConvs.size > 0;
+      const activeBusy = busyConvs.has(store.activeId);
+      sendBtn.disabled = activeBusy;
+      surpriseBtn.disabled = activeBusy;
+    }
+
+    function renderLog() {
+      const conv = activeConv();
+      logEl.innerHTML = "";
+      if (!conv) return;
+      for (const m of conv.messages) {
+        const div = document.createElement("div");
+        div.className = "msg " + m.role;
+        div.innerHTML = m.html;
+        logEl.appendChild(div);
+      }
+      logEl.scrollTop = logEl.scrollHeight;
+      activeTitleEl.textContent = conv.title || "模组社区";
+      setComposerBusy();
+    }
+
+    function pushMsg(convId, role, html) {
+      const conv = store.conversations.find((c) => c.id === convId);
+      if (!conv) return;
+      conv.messages.push({ role, html });
+      conv.updatedAt = Date.now();
+      if (role === "user" && (conv.title === "新对话" || conv.title === "对话 1")) {
+        const plain = html.replace(/<[^>]+>/g, "").trim();
+        if (plain) conv.title = clipTitle(plain);
+      }
+      saveStore();
+      if (convId === store.activeId) {
+        const div = document.createElement("div");
+        div.className = "msg " + role;
+        div.innerHTML = html;
+        logEl.appendChild(div);
+        logEl.scrollTop = logEl.scrollHeight;
+        activeTitleEl.textContent = conv.title || "模组社区";
+      }
+      renderConvList();
+    }
+
+    function renderConvList() {
+      const sorted = store.conversations.slice().sort((a, b) => b.updatedAt - a.updatedAt);
+      convListEl.innerHTML = "";
+      for (const c of sorted) {
+        const li = document.createElement("li");
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "conv-item" + (c.id === store.activeId ? " active" : "");
+        const title = document.createElement("span");
+        title.className = "title";
+        title.textContent = c.title || "新对话";
+        const hint = document.createElement("span");
+        hint.className = "hint" + (busyConvs.has(c.id) ? " busy" : "");
+        hint.textContent = busyConvs.has(c.id)
+          ? "生成中…"
+          : (c.messages.length ? c.messages.length + " 条" : "空对话");
+        btn.appendChild(title);
+        btn.appendChild(hint);
+        btn.addEventListener("click", () => switchConv(c.id));
+        const del = document.createElement("button");
+        del.type = "button";
+        del.className = "conv-del";
+        del.title = "删除";
+        del.textContent = "×";
+        del.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          deleteConv(c.id);
+        });
+        li.appendChild(btn);
+        li.appendChild(del);
+        convListEl.appendChild(li);
+      }
+    }
+
+    function switchConv(id) {
+      if (!store.conversations.some((c) => c.id === id)) return;
+      store.activeId = id;
+      saveStore();
+      renderLog();
+      renderConvList();
+      closeDrawer();
+      qEl.focus();
+    }
+
+    function newConv() {
+      const c = blankConv("新对话");
+      store.conversations.unshift(c);
+      store.activeId = c.id;
+      saveStore();
+      renderLog();
+      renderConvList();
+      closeDrawer();
+      qEl.focus();
+    }
+
+    function deleteConv(id) {
+      if (busyConvs.has(id)) {
+        alert("该对话正在生成，完成后再删");
+        return;
+      }
+      const conv = store.conversations.find((c) => c.id === id);
+      const title = (conv && conv.title) || "此对话";
+      if (!confirm("删除「" + title + "」？仅本机记录。")) return;
+      if (store.conversations.length <= 1) {
+        const only = store.conversations[0];
+        only.messages = [];
+        only.seenSurpriseIds = [];
+        only.title = "新对话";
+        only.updatedAt = Date.now();
+        saveStore();
+        renderLog();
+        renderConvList();
+        return;
+      }
+      store.conversations = store.conversations.filter((c) => c.id !== id);
+      if (store.activeId === id) store.activeId = store.conversations[0].id;
+      saveStore();
+      renderLog();
+      renderConvList();
+    }
+
+    function autoGrow() {
+      qEl.style.height = "auto";
+      qEl.style.height = Math.min(qEl.scrollHeight, 120) + "px";
+    }
+    qEl.addEventListener("input", autoGrow);
+
+    async function refreshHealth() {
+      try {
+        const r = await fetch("/health");
+        const j = await r.json();
+        if (j.ok) {
+          connEl.textContent = `就绪 · ${j.mods}`;
+          connEl.className = "ok";
+        } else {
+          connEl.textContent = "未就绪";
+          connEl.className = "bad";
+        }
+      } catch (e) {
+        connEl.textContent = "离线";
+        connEl.className = "bad";
+      }
+    }
+    refreshHealth();
+
+    function filtersText(f) {
+      if (!f || !Object.keys(f).length) return "（无）";
+      return JSON.stringify(f, null, 2);
+    }
+
+    function sizeLabel(bytes) {
+      const n = Number(bytes) || 0;
+      if (n <= 0) return "";
+      const mb = n / 1e6;
+      if (mb >= 10) return mb.toFixed(0) + " MB";
+      if (mb >= 1) return mb.toFixed(1) + " MB";
+      const kb = n / 1e3;
+      return kb.toFixed(0) + " KB";
+    }
+
+    function metaLine(it) {
+      const tags = (it.tags || "").trim() || "（无标签）";
+      const mid = it.modid || it.id || "";
+      const author = (it.author || "").trim();
+      const parts = [];
+      if (mid) parts.push(`modid ${mid}`);
+      if (author) parts.push(`作者 ${author}`);
+      parts.push(tags, `订阅 ${it.subscribers}`);
+      const sz = sizeLabel(it.file_size);
+      if (sz) parts.push(sz);
+      return parts.join(" · ");
+    }
+
+    function hookBlock(it) {
+      const h = (it.hook || "").trim();
+      if (!h) return "";
+      return (
+        `<div class="mod-hook"><span class="label">可玩点</span>${escapeHtml(h)}</div>`
+      );
+    }
+
+    function bilingualTitle(it) {
+      const zh = (it.title_zh || "").trim();
+      const en = (it.title_en || "").trim();
+      const fallback = (it.title || it.id || "").trim();
+      if (zh && en && zh !== en) return `${zh} / ${en}`;
+      return zh || en || fallback;
+    }
+
+    function renderModCard(it, kind) {
+      const title = escapeHtml(bilingualTitle(it));
+      const link = it.url
+        ? `<a href="${escapeHtml(it.url)}" target="_blank" rel="noopener">${title}</a>`
+        : title;
+      const rank = it.rank != null ? `${it.rank}. ` : "";
+      let scores = "";
+      if (kind === "surprise") {
+        scores =
+          `<div class="scores">` +
+          `<div>hook ${signed(it.hook_score)}</div>` +
+          `<div>sub_sweet ${signed(it.soft_sub_sweet)}</div>` +
+          `<div>SoftFresh ${signed(it.SoftFresh)}</div>` +
+          `</div>`;
+      } else if (it.fit != null || it.score != null) {
+        scores =
+          `<div class="scores">` +
+          (it.fit != null ? `<div>fit ${signed(it.fit)}</div>` : "") +
+          (it.score != null ? `<div>score ${signed(it.score)}</div>` : "") +
+          `</div>`;
+      }
+      return (
+        `<div class="mod-title">${rank}${link}</div>` +
+        `<div class="mod-meta">${escapeHtml(metaLine(it))}</div>` +
+        hookBlock(it) +
+        scores
+      );
+    }
+
+    document.getElementById("btn-menu").addEventListener("click", openDrawer);
+    document.getElementById("btn-close-drawer").addEventListener("click", closeDrawer);
+    scrim.addEventListener("click", closeDrawer);
+    document.getElementById("btn-new").addEventListener("click", () => {
+      newConv();
+    });
+
+    qEl.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" && !ev.shiftKey) {
+        ev.preventDefault();
+        document.getElementById("f").requestSubmit();
+      }
+    });
+
+    surpriseBtn.addEventListener("click", async () => {
+      const conv = activeConv();
+      if (!conv || busyConvs.has(conv.id)) return;
+      const convId = conv.id;
+      pushMsg(convId, "user", "给我惊喜");
+      busyConvs.add(convId);
+      setComposerBusy();
+      renderConvList();
+      pushMsg(convId, "status", "短名单抽样…");
+      try {
+        const r = await fetch("/api/surprise", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            exclude_ids: (conv.seenSurpriseIds || []).slice(-40),
+            n: 10,
+          }),
+        });
+        const j = await r.json();
+        const c2 = store.conversations.find((x) => x.id === convId);
+        if (c2 && c2.messages.length && c2.messages[c2.messages.length - 1].role === "status") {
+          c2.messages.pop();
+          saveStore();
+          if (store.activeId === convId) renderLog();
+        }
+        if (!j.ok) throw new Error(j.error || r.statusText);
+
+        pushMsg(
+          convId,
+          "bot",
+          `<span class="label">惊喜</span>短名单 ${j.shortlist ?? "?"} · 无 LLM` +
+            `<span class="label" style="margin-top:0.55rem">过滤</span>` +
+            `<pre class="filters">${escapeHtml(filtersText(j.filters))}</pre>`
+        );
+
+        const items = j.items || [];
+        if (!items.length) {
+          pushMsg(convId, "bot", `<span class="label">结果</span>没有抽到模组。`);
+          return;
+        }
+        for (const it of items) {
+          pushMsg(convId, "bot", renderModCard(it, "surprise"));
+          if (it.id && c2 && !c2.seenSurpriseIds.includes(it.id)) {
+            c2.seenSurpriseIds.push(it.id);
+          }
+        }
+        saveStore();
+        pushMsg(
+          convId,
+          "status",
+          `出卡 ${items.length} · 本会话软避开近 ${Math.min((c2 && c2.seenSurpriseIds.length) || 0, 40)} 个`
+        );
+      } catch (e) {
+        const c2 = store.conversations.find((x) => x.id === convId);
+        if (c2 && c2.messages.length && c2.messages[c2.messages.length - 1].role === "status") {
+          c2.messages.pop();
+          saveStore();
+          if (store.activeId === convId) renderLog();
+        }
+        pushMsg(
+          convId,
+          "bot",
+          `<span class="label">错误</span>${escapeHtml(String(e.message || e))}`
+        );
+      } finally {
+        busyConvs.delete(convId);
+        setComposerBusy();
+        renderConvList();
+      }
+    });
+
+    document.getElementById("f").addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const conv = activeConv();
+      if (!conv || busyConvs.has(conv.id)) return;
+      const query = qEl.value.trim();
+      if (!query) return;
+
+      const convId = conv.id;
+      pushMsg(convId, "user", escapeHtml(query));
+      qEl.value = "";
+      autoGrow();
+      busyConvs.add(convId);
+      setComposerBusy();
+      renderConvList();
+      pushMsg(convId, "status", "检索工坊资料…");
+
+      try {
+        const r = await fetch("/api/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            question: query,
+            device_id: ensureDeviceId(),
+            conversation_id: convId,
+          }),
+        });
+        const j = await r.json();
+        const c2 = store.conversations.find((x) => x.id === convId);
+        if (c2 && c2.messages.length && c2.messages[c2.messages.length - 1].role === "status") {
+          c2.messages.pop();
+          saveStore();
+          if (store.activeId === convId) renderLog();
+        }
+        if (!j.ok && !j.answer) throw new Error(j.error || r.statusText);
+
+        const answer = (j.answer || "").trim();
+        if (answer) {
+          pushMsg(convId, "bot", escapeHtml(answer).replace(/\n/g, "<br>"));
+        }
+        const items = j.items || [];
+        for (const it of items) {
+          pushMsg(convId, "bot", renderModCard(it, "ask"));
+        }
+        const f = j.find || {};
+        const cov = (j.evidence_summary && j.evidence_summary.coverage) || "";
+        pushMsg(
+          convId,
+          "status",
+          `证据 ${cov || "?"} · 轮次 ${f.rounds ?? "?"} · 工具 ${f.tool_calls ?? "?"} · ${f.elapsed_sec ?? "?"}s`
+        );
+      } catch (e) {
+        const c2 = store.conversations.find((x) => x.id === convId);
+        if (c2 && c2.messages.length && c2.messages[c2.messages.length - 1].role === "status") {
+          c2.messages.pop();
+          saveStore();
+          if (store.activeId === convId) renderLog();
+        }
+        pushMsg(
+          convId,
+          "bot",
+          `<span class="label">错误</span>${escapeHtml(String(e.message || e))}`
+        );
+      } finally {
+        busyConvs.delete(convId);
+        setComposerBusy();
+        renderConvList();
+        if (store.activeId === convId) qEl.focus();
+      }
+    });
+
+    loadStore();
+    renderLog();
+    renderConvList();
+  </script>
+</body>
+</html>

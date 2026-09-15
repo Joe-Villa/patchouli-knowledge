@@ -1,0 +1,1 @@
+Workshop Fit recommend. scoring under tool/recommend_mods/scoring; agent entry in service/1837/agent/tools.py.

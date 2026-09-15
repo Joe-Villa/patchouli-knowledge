@@ -1,0 +1,4 @@
+# 运维控制台专用：不依赖核心模块 / 问答管线
+python-dotenv>=1.0,<2
+fastapi>=0.110,<1
+uvicorn[standard]>=0.27,<1

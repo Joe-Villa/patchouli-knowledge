@@ -1,0 +1,26 @@
+{
+  "question": "专制乌托邦主义会影响哪些法律组，对各个法律的态度如何",
+  "question_focus": "意识形态对各法律组/法律的态度",
+  "coverage": "sufficient",
+  "resolved_entities": [
+    {
+      "query": "专制乌托邦主义",
+      "key": "ideology_despotic_utopian",
+      "label": "专制乌托邦主义者",
+      "entity_type": "ideology"
+    }
+  ],
+  "unresolved": [],
+  "not_expanded": [],
+  "notes": "仅需意识形态定义块即可回答态度表；未展开各法律本身的定义。",
+  "items": [
+    {
+      "path": "common/ideologies/01_character_ideologies.txt",
+      "key": "ideology_despotic_utopian",
+      "role": "primary",
+      "entity_type": "ideology",
+      "label": "专制乌托邦主义者",
+      "why": "问题主实体：含全部法律组态度"
+    }
+  ]
+}

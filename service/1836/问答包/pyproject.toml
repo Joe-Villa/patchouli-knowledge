@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "patchouli-qa"
+version = "0.1.0"
+description = "Sandboxed static-data Q&A agent (Patchouli)"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+patchouli-qa = "patchouli_qa.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

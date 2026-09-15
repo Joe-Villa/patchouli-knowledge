@@ -1,0 +1,44 @@
+# service/1838服务：独立镜像，公网 TCP 1838
+# 构建：docker compose -f deploy/docker-compose.yml build cards
+# 启动：docker compose -f deploy/docker-compose.yml up -d cards
+# 与 web/recommend/console/qqbot 互不依赖；数据卷只读挂载 workshop sqlite。
+
+FROM python:3.12-slim-bookworm
+
+RUN set -eux; \
+    if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
+      sed -i 's|deb.debian.org|mirrors.cloud.tencent.com|g; s|security.debian.org|mirrors.cloud.tencent.com|g' \
+        /etc/apt/sources.list.d/debian.sources; \
+    fi; \
+    if [ -f /etc/apt/sources.list ]; then \
+      sed -i 's|deb.debian.org|mirrors.cloud.tencent.com|g; s|security.debian.org|mirrors.cloud.tencent.com|g' \
+        /etc/apt/sources.list; \
+    fi; \
+    apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates tini \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY service/1838/service/requirements.txt /tmp/cards-requirements.txt
+RUN pip install --no-cache-dir \
+      -i https://mirrors.cloud.tencent.com/pypi/simple \
+      --trusted-host mirrors.cloud.tencent.com \
+      -r /tmp/cards-requirements.txt \
+    && rm /tmp/cards-requirements.txt
+
+COPY service/1838/service /app/service/1838/service
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app/service/1838 \
+    CARDS_HOST=0.0.0.0 \
+    CARDS_PORT=1838 \
+    WORKSHOP_DB=/data/workshop_details_all.sqlite
+
+WORKDIR /app/service/1838
+
+EXPOSE 1838
+
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["python3", "-m", "uvicorn", "service.app:app", "--host", "0.0.0.0", "--port", "1838"]

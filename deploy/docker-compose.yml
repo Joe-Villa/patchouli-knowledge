@@ -1,0 +1,169 @@
+# 服务器部署原则：多服务相互独立；可共享数据卷，但互不知彼此；一服务一端口。
+# 切勿 depends_on；切勿共用镜像；改 A 只 up A。
+#
+# 欢迎页 welcome=:80（镜像 patchouli-welcome）——用户入口目录，不含运维口
+# Vic3 问答 web=:1836（镜像 patchouli）
+# 模组社区 recommend=:1837（镜像 patchouli-recommend）——工坊 Agent + 惊喜抽样
+# 模组卡片 cards=:1838（镜像 patchouli-cards）——浏览 / 按 id·名搜索工坊卡片全字段
+# 官方 QQ 机器人 qqbot=:3817（镜像 patchouli-qqbot，健康检查；出站连官方 Gateway）
+# 运维控制台 console=:1453（镜像 patchouli-console）——只读问答 / 模组社区日志；不对用户展示
+#
+# docker compose -f deploy/docker-compose.yml build welcome && … up -d welcome
+# docker compose -f deploy/docker-compose.yml build web && … up -d web
+# docker compose -f deploy/docker-compose.yml build recommend && … up -d recommend
+# docker compose -f deploy/docker-compose.yml build cards && … up -d cards
+# docker compose -f deploy/docker-compose.yml build qqbot && … up -d qqbot
+# docker compose -f deploy/docker-compose.yml build console && … up -d console
+
+name: patchouli
+
+services:
+  welcome:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.welcome
+    image: patchouli-welcome:latest
+    ports:
+      - "80:80"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    # 与 console / welcome / qqbot 镜像分离；改名需计划窗口，避免误 recreate 掐问答
+    image: patchouli:latest
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      CORE_ROOT: /app/service/1836
+      PATCHOULI_CONFIG: /app/service/1836/patchouli.request.toml
+      PYTHONPATH: /app/service/1836:/app
+      WEB_HOST: "0.0.0.0"
+      WEB_PORT: "1836"
+    ports:
+      - "1836:1836"
+    volumes:
+      # 语料挂载：不可 :ro —— SQLite 在只读盘上需 immutable，且多处 connect 未带 uri
+      - ../database/data/steam/529340/vanilla:/app/service/1836/data/game
+      - ../database/data/steam/529340/mods:/app/service/1836/data/mods
+      - ../service/1836/data/mods_catalog.json:/app/service/1836/data/mods_catalog.json:ro
+      - patchouli_reqlog:/app/log/1836
+      - patchouli_sessions:/app/service/1836/sandbox/sessions
+    privileged: true
+    command: ["web"]
+    restart: unless-stopped
+
+  recommend:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.recommend
+    image: patchouli-recommend:latest
+    env_file:
+      - path: .env
+        required: false
+      - path: ../service/1837/.env
+        required: false
+    environment:
+      RECOMMEND_HOST: "0.0.0.0"
+      RECOMMEND_PORT: "1837"
+      WORKSHOP_DB: /data/workshop_details_all.sqlite
+      WORKSHOP_BRIEF_DB: /data/vic3_mods_all.sqlite
+      PYTHONPATH: /app:/app/service/1837
+      RECOMMEND_LOG_DIR: /app/service/1837/logs
+      DEEPSEEK_BASE_URL: "${DEEPSEEK_BASE_URL:-https://api.deepseek.com}"
+      DEEPSEEK_MODEL: "${DEEPSEEK_MODEL:-deepseek-chat}"
+    ports:
+      - "1837:1837"
+    volumes:
+      - ../database/data/steam/529340/community/workshop_details/workshop_details_all.sqlite:/data/workshop_details_all.sqlite:ro
+      - ../database/data/steam/529340/community/workshop_details/workshop_details_ge300.sqlite:/data/workshop_details_ge300.sqlite:ro
+      - ../database/data/steam/529340/community/workshop_brief/vic3_mods_all.sqlite:/data/vic3_mods_all.sqlite:ro
+      - ../database/data/steam/529340/community/workshop_brief/vic3_mods_ge300.sqlite:/data/vic3_mods_ge300.sqlite:ro
+      - patchouli_recommend_logs:/app/service/1837/logs
+    restart: unless-stopped
+
+  cards:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.cards
+    image: patchouli-cards:latest
+    environment:
+      CARDS_HOST: "0.0.0.0"
+      CARDS_PORT: "1838"
+      WORKSHOP_DB: /data/workshop_details_all.sqlite
+      WORKSHOP_BRIEF_DB: /data/vic3_mods_all.sqlite
+      PYTHONPATH: /app/service/1838
+    ports:
+      - "1838:1838"
+    volumes:
+      # 与 recommend 同一份 details / brief（含 title_en、title_zh、author）
+      - ../database/data/steam/529340/community/workshop_details/workshop_details_all.sqlite:/data/workshop_details_all.sqlite:ro
+      - ../database/data/steam/529340/community/workshop_details/workshop_details_ge300.sqlite:/data/workshop_details_ge300.sqlite:ro
+      - ../database/data/steam/529340/community/workshop_brief/vic3_mods_all.sqlite:/data/vic3_mods_all.sqlite:ro
+      - ../database/data/steam/529340/community/workshop_brief/vic3_mods_ge300.sqlite:/data/vic3_mods_ge300.sqlite:ro
+    restart: unless-stopped
+
+  qqbot:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.qqbot
+    image: patchouli-qqbot:latest
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      CORE_ROOT: /app/service/1836
+      PATCHOULI_CONFIG: /app/和QQ的通信管线/patchouli.request.toml
+      QQBOT_HEALTH_HOST: "0.0.0.0"
+      QQBOT_HEALTH_PORT: "3817"
+      # 默认沙箱；正式上线后在 .env 设 QQBOT_SANDBOX=0
+      QQBOT_SANDBOX: "${QQBOT_SANDBOX:-1}"
+    ports:
+      - "3817:3817"
+    volumes:
+      - ../database/data/steam/529340/vanilla:/app/service/1836/data/game
+      - ../database/data/steam/529340/mods:/app/service/1836/data/mods
+      - ../service/1836/data/mods_catalog.json:/app/service/1836/data/mods_catalog.json:ro
+      - patchouli_reqlog:/app/service/1836/patchouli/logs
+      - patchouli_sessions:/app/service/1836/sandbox/sessions
+      - patchouli_framework_logs:/app/和QQ的通信管线/logs
+      - patchouli_runtime:/app/和QQ的通信管线/runtime
+    privileged: true
+    command: ["qqbot"]
+    restart: unless-stopped
+
+  console:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.console
+    image: patchouli-console:latest
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      CONSOLE_HOST: "0.0.0.0"
+      CONSOLE_PORT: "1453"
+      FRAMEWORK_LOG_DIR: /app/和QQ的通信管线/logs/framework
+      PROXY_STORE_PATH: /app/和QQ的通信管线/runtime/proxy_tables.json
+      CONSOLE_DATA_DIR: /app/和QQ的通信管线/console_data
+      REQLOG_DIR: /app/log/1836
+      RECOMMEND_LOG_DIR: /app/service/1837/logs
+    ports:
+      - "1453:1453"
+    volumes:
+      - patchouli_framework_logs:/app/和QQ的通信管线/logs
+      - patchouli_runtime:/app/和QQ的通信管线/runtime
+      - patchouli_console_data:/app/和QQ的通信管线/console_data
+      - patchouli_reqlog:/app/log/1836
+      - patchouli_recommend_logs:/app/service/1837/logs:ro
+    restart: unless-stopped
+
+volumes:
+  patchouli_reqlog:
+  patchouli_sessions:
+  patchouli_framework_logs:
+  patchouli_runtime:
+  patchouli_console_data:
+  patchouli_recommend_logs:

@@ -1,0 +1,13 @@
+# 容器内绝对路径。密钥由环境变量 DEEPSEEK_* 注入。
+
+game_root = "/app/service/1836/data/game"
+sessions_root = "/app/service/1836/sandbox/sessions"
+log_dir = "/app/log/1836"
+mods_root = "/app/service/1836/data/mods"
+mods_catalog = "/app/service/1836/data/mods_catalog.json"
+
+max_rounds = 12
+submit_grace = 3
+max_wall_sec = 180.0
+lang = "simp_chinese"
+auto_select_corpus = true

@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+  <title>帕秋莉 · 运维控制台</title>
+  <style>
+    :root {
+      --bg: #12100e;
+      --panel: #211c18;
+      --ink: #f4efe6;
+      --muted: #9c9288;
+      --line: #3f3832;
+      --accent: #c45c3e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      line-height: 1.45;
+    }
+    .wrap {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 1rem 1rem 2.5rem;
+    }
+    header {
+      padding: 0.5rem 0 1rem;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 1rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: flex-end;
+      justify-content: space-between;
+    }
+    header h1 { margin: 0; font-size: 1.2rem; }
+    header p { margin: 0.35rem 0 0; color: var(--muted); font-size: 0.85rem; }
+    section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    section h2 {
+      margin: 0 0 0.75rem;
+      font-size: 1rem;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+      align-items: center;
+    }
+    .count {
+      margin-left: auto;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+    label.filter {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+    select {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0.55rem 0.65rem;
+      background: #151210;
+      color: var(--ink);
+      font: inherit;
+      font-size: 0.9rem;
+    }
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 0.65rem 0.9rem;
+      font-size: 0.92rem;
+      font-weight: 600;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+    }
+    button.secondary {
+      background: transparent;
+      border: 1px solid var(--line);
+      color: var(--ink);
+    }
+    button.linkish {
+      background: transparent;
+      border: 0;
+      color: var(--accent);
+      padding: 0.25rem 0;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    button:disabled { opacity: 0.55; }
+    .log-list { display: flex; flex-direction: column; gap: 0.65rem; }
+    .log-item {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 0.75rem;
+      background: rgba(0,0,0,.15);
+      cursor: pointer;
+    }
+    .log-item.open { border-color: rgba(196, 92, 62, 0.55); }
+    .log-head {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem 0.75rem;
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+      align-items: center;
+    }
+    .log-q { font-weight: 600; margin: 0.15rem 0; word-break: break-word; }
+    .log-r {
+      color: var(--muted);
+      font-size: 0.88rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin-top: 0.25rem;
+    }
+    .log-r.expanded { color: var(--ink); }
+    .detail {
+      display: none;
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--line);
+    }
+    .log-item.open .detail { display: block; }
+    .detail h3 {
+      margin: 0 0 0.45rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .llm-call {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      margin-bottom: 0.55rem;
+      overflow: hidden;
+    }
+    .llm-call summary {
+      cursor: pointer;
+      padding: 0.55rem 0.65rem;
+      background: rgba(255,255,255,.04);
+      font-size: 0.82rem;
+      color: var(--ink);
+      list-style: none;
+    }
+    .llm-call summary::-webkit-details-marker { display: none; }
+    .llm-section {
+      padding: 0.45rem 0.65rem 0.15rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+      background: rgba(0,0,0,.12);
+    }
+    .llm-section.cot { color: #d4a574; }
+    .llm-section.out { color: var(--accent); }
+    .llm-msg {
+      padding: 0.55rem 0.65rem;
+      border-top: 1px solid var(--line);
+      font-size: 0.8rem;
+    }
+    .llm-msg .role {
+      color: var(--accent);
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+      font-size: 0.75rem;
+    }
+    .llm-msg pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: var(--ink);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.75rem;
+      max-height: 22rem;
+      overflow: auto;
+    }
+    .tag {
+      display: inline-block;
+      padding: 0.1rem 0.45rem;
+      border-radius: 6px;
+      background: rgba(255,255,255,.06);
+      color: var(--ink);
+      font-size: 0.78rem;
+    }
+    .empty { color: var(--muted); text-align: center; padding: 1rem 0; }
+    .meta { color: var(--muted); font-size: 0.82rem; }
+    .note { color: var(--muted); font-size: 0.82rem; margin: 0.35rem 0; }
+    .mod-list {
+      margin: 0.25rem 0 0.75rem;
+      padding-left: 1.25rem;
+      font-size: 0.88rem;
+    }
+    .mod-list li { margin: 0.25rem 0; }
+    .mod-list code {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-right: 0.35rem;
+    }
+    .mod-list .hook {
+      color: var(--muted);
+      font-size: 0.84rem;
+      margin-top: 0.15rem;
+      white-space: pre-wrap;
+    }
+    pre.mini {
+      margin: 0 0 0.75rem;
+      padding: 0.55rem 0.65rem;
+      background: #151210;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 0.82rem;
+      color: var(--ink);
+    }
+    @media (max-width: 600px) {
+      .wrap { padding-left: 0.75rem; padding-right: 0.75rem; }
+      .count { margin-left: 0; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>帕秋莉运维控制台</h1>
+        <p id="sub">加载中…</p>
+      </div>
+      <p class="meta" id="updated"></p>
+    </header>
+
+    <section>
+      <h2 id="logTitle">服务日志</h2>
+      <div class="actions">
+        <label class="filter">
+          服务
+          <select id="serviceFilter" aria-label="切换服务">
+            <option value="qa">问答</option>
+            <option value="recommend">模组推荐</option>
+          </select>
+        </label>
+        <label class="filter">
+          日期
+          <select id="dateFilter" aria-label="按日期筛选">
+            <option value="">全部日期</option>
+          </select>
+        </label>
+        <button type="button" id="btnLogs">刷新</button>
+        <button type="button" class="secondary" id="btnAuto">自动刷新：开</button>
+        <span class="count" id="count">共 — 条</span>
+      </div>
+      <div class="log-list" id="logs"></div>
+    </section>
+  </div>
+  <script>
+    const DEVICE_KEY = "patchouli_console_device_v1";
+    const DEVICE_HEADER = "X-Console-Device";
+    const logsEl = document.getElementById("logs");
+    const sub = document.getElementById("sub");
+    const updated = document.getElementById("updated");
+    const btnAuto = document.getElementById("btnAuto");
+    const serviceFilter = document.getElementById("serviceFilter");
+    const dateFilter = document.getElementById("dateFilter");
+    const countEl = document.getElementById("count");
+    const logTitle = document.getElementById("logTitle");
+    const SERVICE_KEY = "patchouli_console_service_v1";
+    let auto = true;
+    let timer = null;
+    let selectedDate = "";
+    let selectedService = "qa";
+    try {
+      const kept = localStorage.getItem(SERVICE_KEY);
+      if (kept === "qa" || kept === "recommend") selectedService = kept;
+    } catch (_) {}
+    /** @type {Set<string>} */
+    const expanded = new Set();
+    /** @type {Map<string, object>} */
+    const byId = new Map();
+    /** @type {Map<string, object>} */
+    const llmCache = new Map();
+    /** @type {Map<string, object>} */
+    const recommendCache = new Map();
+
+    function serviceQs() {
+      return "service=" + encodeURIComponent(selectedService);
+    }
+
+    function syncServiceUi() {
+      serviceFilter.value = selectedService;
+      logTitle.textContent = selectedService === "recommend" ? "模组推荐日志" : "问答日志";
+    }
+
+    function newId() {
+      if (crypto.randomUUID) return crypto.randomUUID().replace(/-/g, "").slice(0, 32);
+      return "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+    }
+
+    function ensureDeviceId() {
+      try {
+        const existing = localStorage.getItem(DEVICE_KEY);
+        if (existing && /^[A-Za-z0-9_-]{1,64}$/.test(existing)) return existing;
+      } catch (_) {}
+      const id = "d" + newId().slice(0, 31);
+      try { localStorage.setItem(DEVICE_KEY, id); } catch (_) {}
+      return id;
+    }
+
+    const deviceId = ensureDeviceId();
+
+    async function api(path, opts) {
+      const headers = {
+        [DEVICE_HEADER]: deviceId,
+        ...((opts && opts.headers) || {}),
+      };
+      const r = await fetch(path, {
+        cache: "no-store",
+        credentials: "same-origin",
+        ...(opts || {}),
+        headers,
+      });
+      if (r.status === 401) {
+        location.replace("/login?_=" + Date.now());
+        return null;
+      }
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        throw new Error(d.detail || ("HTTP " + r.status));
+      }
+      return r.json();
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    }
+
+    function sourceTag(src) {
+      if (src === "web") return "网页";
+      if (src === "qq") return "QQ";
+      if (src === "recommend") return "推荐";
+      if (src === "surprise") return "惊喜";
+      return src || "—";
+    }
+
+    function formatFilters(filters) {
+      if (!filters || typeof filters !== "object") return "（无）";
+      const entries = Object.entries(filters).filter(([, v]) => {
+        if (v == null) return false;
+        if (Array.isArray(v)) return v.length > 0;
+        if (typeof v === "string") return v.trim() !== "";
+        return true;
+      });
+      if (!entries.length) return "（无硬过滤）";
+      return entries.map(([k, v]) => k + ": " + (typeof v === "object" ? JSON.stringify(v) : String(v))).join("\n");
+    }
+
+    function renderModList(rows, withHook) {
+      if (!rows || !rows.length) return '<div class="note">（空）</div>';
+      return `<ol class="mod-list">${rows.map(r => {
+        const id = escapeHtml(r.id || "");
+        const title = escapeHtml(r.title || "");
+        const hook = withHook && r.hook ? `<div class="hook">${escapeHtml(r.hook)}</div>` : "";
+        return `<li><code>${id}</code> ${title}${hook}</li>`;
+      }).join("")}</ol>`;
+    }
+
+    function renderRecommendBlock(taskId, data) {
+      if (!data) return '<div class="note">加载中…</div>';
+      if (data.error) return `<div class="note">${escapeHtml(data.error)}</div>`;
+      const bits = [];
+      if (data.refused) {
+        bits.push(`<div class="note">门控拒绝：${escapeHtml(data.refuse_reason || "")}</div>`);
+      }
+      bits.push(`<h3>转义</h3><pre class="mini">${escapeHtml(data.query_rewritten || "（未转义 / 无）")}</pre>`);
+      if (data.rewrite_error) {
+        bits.push(`<div class="note">转义错误：${escapeHtml(String(data.rewrite_error))}</div>`);
+      }
+      bits.push(`<h3>过滤</h3><pre class="mini">${escapeHtml(formatFilters(data.filters))}</pre>`);
+      bits.push(`<h3>召回（${(data.recalled || []).length}）</h3>${renderModList(data.recalled, false)}`);
+      bits.push(`<h3>通过（${(data.passed || []).length}）</h3>${renderModList(data.passed, true)}`);
+      return bits.join("");
+    }
+
+    function answerText(it, open) {
+      const full = it.result_full || it.result || "";
+      if (open) return full || "—";
+      return it.result || full || "—";
+    }
+
+    function renderMessages(messages) {
+      if (!messages || !messages.length) {
+        return '<div class="note">无 messages</div>';
+      }
+      return messages.map(m => {
+        const role = escapeHtml(m.role || "?");
+        let body = m.content || "";
+        const cot = m.reasoning_content || m.reasoning || m.thinking || "";
+        if (cot) body = "[COT]\n" + cot + (body ? "\n\n[content]\n" + body : "");
+        if (m.tool_calls) {
+          body += (body ? "\n\n" : "") + "[tool_calls]\n" + JSON.stringify(m.tool_calls, null, 2);
+        }
+        if (m.name) body = `(${m.name}) ` + body;
+        return `<div class="llm-msg"><div class="role">${role}</div><pre>${escapeHtml(body)}</pre></div>`;
+      }).join("");
+    }
+
+    function renderOutput(output) {
+      if (!output) {
+        return '<div class="note">无响应文件</div>';
+      }
+      const bits = [];
+      if (output.error) {
+        bits.push(`<div class="llm-section">错误</div><div class="llm-msg"><pre>${escapeHtml(String(output.error))}</pre></div>`);
+      }
+      if (output.cot) {
+        bits.push(`<div class="llm-section cot">COT / 推理</div><div class="llm-msg"><pre>${escapeHtml(output.cot)}</pre></div>`);
+      }
+      if (output.content) {
+        bits.push(`<div class="llm-section out">助手输出</div><div class="llm-msg"><pre>${escapeHtml(output.content)}</pre></div>`);
+      }
+      if (output.tool_calls) {
+        bits.push(
+          `<div class="llm-section out">tool_calls</div><div class="llm-msg"><pre>${escapeHtml(JSON.stringify(output.tool_calls, null, 2))}</pre></div>`
+        );
+      }
+      if (output.answer_text && output.answer_text !== output.content) {
+        bits.push(`<div class="llm-section out">answer_text</div><div class="llm-msg"><pre>${escapeHtml(output.answer_text)}</pre></div>`);
+      }
+      const meta = [];
+      if (output.finish_reason) meta.push("finish=" + output.finish_reason);
+      if (output.elapsed_sec != null) meta.push(Number(output.elapsed_sec).toFixed(2) + "s");
+      if (meta.length) {
+        bits.push(`<div class="note" style="padding:0.35rem 0.65rem">${escapeHtml(meta.join(" · "))}</div>`);
+      }
+      if (!bits.length) return '<div class="note">响应为空</div>';
+      return bits.join("");
+    }
+
+    function renderLlmBlock(taskId, data) {
+      if (!data) return '<div class="note">加载中…</div>';
+      if (data.error) return `<div class="note">${escapeHtml(data.error)}</div>`;
+      const calls = data.calls || [];
+      if (!calls.length) {
+        return `<div class="note">${escapeHtml(data.note || "无 LLM 调用记录")}</div>`;
+      }
+      return calls.map((c, i) => {
+        const hasCot = !!(c.output && c.output.cot);
+        const title = `${c.stage || "?"} · ${c.name || ("call-" + (i + 1))}`
+          + (c.model ? ` · ${c.model}` : "")
+          + (hasCot ? " · COT" : "");
+        return `<details class="llm-call"${i === 0 ? " open" : ""}>
+          <summary>${escapeHtml(title)}</summary>
+          <div class="llm-section">输入 messages</div>
+          ${renderMessages(c.messages)}
+          <div class="llm-section out">本轮输出</div>
+          ${renderOutput(c.output)}
+        </details>`;
+      }).join("");
+    }
+
+    function renderLogs(items) {
+      byId.clear();
+      if (!items || !items.length) {
+        logsEl.innerHTML = '<div class="empty">暂无记录</div>';
+        return;
+      }
+      for (const it of items) byId.set(it.task_id, it);
+      const isRec = selectedService === "recommend";
+      logsEl.innerHTML = items.map(it => {
+        const open = expanded.has(it.task_id);
+        const body = answerText(it, open);
+        let detailHtml = "";
+        if (open) {
+          if (isRec) {
+            detailHtml = renderRecommendBlock(it.task_id, recommendCache.get(it.task_id));
+          } else {
+            detailHtml = renderLlmBlock(it.task_id, llmCache.get(it.task_id));
+          }
+        }
+        const detailTitle = isRec ? "转义 / 过滤 / 召回 / 通过" : "LLM 输入 / 输出（含 COT）";
+        return `
+        <article class="log-item${open ? " open" : ""}" data-id="${escapeHtml(it.task_id)}">
+          <div class="log-head">
+            <span>${escapeHtml(it.time)}</span>
+            ${isRec ? "" : `<span>${escapeHtml(it.user)}</span>`}
+            <span class="tag">${escapeHtml(sourceTag(it.source))}</span>
+            ${it.conversation_id ? `<span class="tag">对话 ${escapeHtml(String(it.conversation_id).slice(0, 8))}</span>` : ""}
+            <span class="tag">${escapeHtml(it.status_zh)}</span>
+            ${it.elapsed_sec != null ? `<span>${Number(it.elapsed_sec).toFixed(1)}s</span>` : ""}
+            ${it.has_llm ? `<span class="tag">LLM</span>` : ""}
+            ${isRec && it.recalled_n != null ? `<span>召回 ${it.recalled_n} · 通过 ${it.passed_n || 0}</span>` : ""}
+          </div>
+          <div class="log-q">${escapeHtml(it.question)}</div>
+          <div class="log-r ${open ? "expanded" : ""}">${escapeHtml(body)}</div>
+          <button type="button" class="linkish btn-expand" data-id="${escapeHtml(it.task_id)}">${open ? "收起详情" : "展开详情"}</button>
+          <div class="detail">
+            <h3>${detailTitle}</h3>
+            <div class="llm-box" data-id="${escapeHtml(it.task_id)}">${detailHtml}</div>
+          </div>
+        </article>
+      `;
+      }).join("");
+    }
+
+    async function ensureLlm(taskId) {
+      if (llmCache.has(taskId)) return llmCache.get(taskId);
+      try {
+        const data = await api("/api/logs/" + encodeURIComponent(taskId) + "/llm");
+        if (!data) return null;
+        llmCache.set(taskId, data);
+        return data;
+      } catch (e) {
+        const err = { error: String(e.message || e), calls: [] };
+        llmCache.set(taskId, err);
+        return err;
+      }
+    }
+
+    async function ensureRecommend(taskId) {
+      if (recommendCache.has(taskId)) return recommendCache.get(taskId);
+      try {
+        const data = await api("/api/logs/" + encodeURIComponent(taskId) + "/recommend");
+        if (!data) return null;
+        recommendCache.set(taskId, data);
+        return data;
+      } catch (e) {
+        const err = { error: String(e.message || e) };
+        recommendCache.set(taskId, err);
+        return err;
+      }
+    }
+
+    async function toggleExpand(id) {
+      if (expanded.has(id)) expanded.delete(id);
+      else expanded.add(id);
+      const it = byId.get(id);
+      if (!it) return;
+      const open = expanded.has(id);
+      const article = logsEl.querySelector('.log-item[data-id="' + CSS.escape(id) + '"]');
+      if (!article) return;
+      article.classList.toggle("open", open);
+      const body = article.querySelector(".log-r");
+      if (body) {
+        body.textContent = answerText(it, open);
+        body.classList.toggle("expanded", open);
+      }
+      const btn = article.querySelector(".btn-expand");
+      if (btn) btn.textContent = open ? "收起详情" : "展开详情";
+      const box = article.querySelector(".llm-box");
+      if (open && box) {
+        if (selectedService === "recommend") {
+          box.innerHTML = renderRecommendBlock(id, null);
+          const data = await ensureRecommend(id);
+          if (expanded.has(id) && box) box.innerHTML = renderRecommendBlock(id, data);
+        } else {
+          box.innerHTML = renderLlmBlock(id, null);
+          const data = await ensureLlm(id);
+          if (expanded.has(id) && box) box.innerHTML = renderLlmBlock(id, data);
+        }
+      }
+    }
+
+    logsEl.addEventListener("click", (ev) => {
+      const btn = ev.target.closest(".btn-expand");
+      const article = ev.target.closest(".log-item");
+      if (btn) {
+        ev.stopPropagation();
+        const id = btn.getAttribute("data-id");
+        if (id) toggleExpand(id);
+        return;
+      }
+      if (ev.target.closest("details") || ev.target.closest("a") || ev.target.closest("pre")) {
+        return;
+      }
+      if (article) {
+        const id = article.getAttribute("data-id");
+        if (id) toggleExpand(id);
+      }
+    });
+
+    function setCount(total, date, truncated, shown) {
+      if (date) {
+        countEl.textContent = truncated
+          ? `${date} · 共 ${total} 条（显示 ${shown}）`
+          : `${date} · 共 ${total} 条`;
+      } else {
+        countEl.textContent = truncated
+          ? `共 ${total} 条（显示 ${shown}）`
+          : `共 ${total} 条`;
+      }
+    }
+
+    async function loadDates() {
+      const data = await api("/api/logs/dates?" + serviceQs());
+      if (!data) return;
+      const dates = data.dates || [];
+      const keep = selectedDate;
+      dateFilter.innerHTML = '<option value="">全部日期</option>'
+        + dates.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join("");
+      if (keep && dates.includes(keep)) dateFilter.value = keep;
+      else {
+        dateFilter.value = "";
+        selectedDate = "";
+      }
+    }
+
+    async function loadLogs() {
+      const q = selectedDate
+        ? ("?" + serviceQs() + "&date=" + encodeURIComponent(selectedDate))
+        : ("?" + serviceQs());
+      const data = await api("/api/logs/recent" + q);
+      if (!data) return;
+      renderLogs(data.items);
+      setCount(
+        Number(data.total) || 0,
+        data.date || "",
+        !!data.truncated,
+        (data.items || []).length
+      );
+      const now = new Date();
+      updated.textContent = "更新于 " + now.toLocaleTimeString("zh-CN", { hour12: false });
+    }
+
+    function schedule() {
+      if (timer) clearInterval(timer);
+      timer = null;
+      if (auto) timer = setInterval(loadLogs, 15000);
+      btnAuto.textContent = "自动刷新：" + (auto ? "开" : "关");
+    }
+
+    document.getElementById("btnLogs").onclick = async () => {
+      await loadDates();
+      await loadLogs();
+    };
+    btnAuto.onclick = () => {
+      auto = !auto;
+      schedule();
+    };
+    dateFilter.onchange = async () => {
+      selectedDate = dateFilter.value || "";
+      expanded.clear();
+      await loadLogs();
+    };
+    serviceFilter.onchange = async () => {
+      selectedService = serviceFilter.value || "qa";
+      try { localStorage.setItem(SERVICE_KEY, selectedService); } catch (_) {}
+      selectedDate = "";
+      expanded.clear();
+      llmCache.clear();
+      recommendCache.clear();
+      syncServiceUi();
+      await loadDates();
+      await loadLogs();
+    };
+
+    (async () => {
+      syncServiceUi();
+      const st = await api("/api/auth/status");
+      if (st) {
+        const short = (st.device_id || deviceId).slice(0, 12);
+        sub.textContent = "已授权设备：" + short + "… · 多服务只读日志";
+      }
+      await loadDates();
+      await loadLogs();
+      schedule();
+    })();
+  </script>
+</body>
+</html>

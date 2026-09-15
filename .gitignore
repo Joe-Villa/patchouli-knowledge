@@ -1,0 +1,74 @@
+# 原则：只追踪程序不可再生的内容（源码、Agent 规则、requirements / example 配置）。
+# 不追踪：数据、文档、虚拟环境、日志、会话、可重建产物。
+
+# --- secrets（保留 *.example）---
+.env
+!.env.example
+config.toml
+
+# --- 环境 / 构建垃圾 ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- 运行时状态（可再生现场，非源码）---
+/log/
+**/logs/
+**/runtime/
+**/sandbox/sessions/
+**/sandbox/_trash/
+**/console_data/
+*.log
+
+# --- 数据库文件 ---
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite-*
+
+# --- 数据（语料 / 索引 / 备份；由卷或 ingest 重建）---
+/database/
+/data_other/
+/archive/old/
+service/1836/data/bytiancao_*
+service/1836/data/mods_catalog.json
+service/1836/data/re
+**/instances/*/data/
+**/instances/*/derived/
+**/instances/*/sessions/
+**/instances/*/logs/
+
+# --- 文档 / 人读笔记（非程序输入）---
+/file/
+/TODO
+**/README.md
+**/README
+**/USAGE.md
+**/DIFFERENCES.md
+tool/**/README.md
+/thumbnail.png
+
+# --- 生成物 / 实验输出 ---
+/out/
+service/1837/out/
+
+# --- OS / IDE ---
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+*~
+
+archive

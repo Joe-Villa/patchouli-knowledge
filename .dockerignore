@@ -1,0 +1,71 @@
+# 原则：镜像 / 服务器只含运行服务必要内容。
+# 排除：ingest、文档、数据、脚本实验包、备份、日志、venv。
+# 保留：各服务源码、tool/、common/、deploy 配置与 requirements、
+#       archive/和QQ的通信管线（qqbot）、欢迎页 assets。
+
+# VCS
+.git
+.gitignore
+**/.git
+
+# 环境 / 构建垃圾
+**/.venv
+**/venv
+**/__pycache__
+**/*.py[cod]
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/*.egg-info
+**/dist
+**/build
+
+# secrets
+**/.env
+!**/.env.example
+
+# 运行时状态
+/log/
+**/logs/
+**/runtime/
+**/sandbox/sessions/
+**/sandbox/_trash/
+**/console_data/
+*.log
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite-*
+
+# 数据（运行时卷挂载，不进镜像）
+/database/
+/data_other/
+/archive/old/
+/thumbnail.png
+
+# 非运行时：加工脚本、人读文档、实验包、一次性脚本
+/ingest/
+/file/
+/TODO
+/out/
+service/1836/问答包/
+service/1837/out/
+service/1837/scripts/
+service/1838/scripts/
+archive/和QQ的通信管线/scripts/
+deploy/welcome/
+
+# 人读文档（Agent 规则 .txt / structure.md 保留）
+**/README.md
+**/README
+**/USAGE.md
+**/DIFFERENCES.md
+tool/**/README.md
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+*~

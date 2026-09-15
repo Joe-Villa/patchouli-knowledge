@@ -1,0 +1,2 @@
+请为下列问题查找答用证据，完成后调用 submit_evidence_package。
+建议先 route_query(question=原问题)，再按返回的 prefer / hints / query_aliases 行动。

@@ -1,0 +1,2 @@
+请在汉化洋名 tables 中查找答用证据，完成后调用 submit_evidence_package。
+优先 run_code 查询 /game/names_index.sqlite；结构见 /game/structure.md。
