@@ -120,15 +120,14 @@
       margin-bottom: 0.35rem;
       align-items: center;
     }
-    .log-q { font-weight: 600; margin: 0.15rem 0; word-break: break-word; }
+    .log-q { font-weight: 600; margin: 0.15rem 0 0; word-break: break-word; }
     .log-r {
-      color: var(--muted);
+      color: var(--ink);
       font-size: 0.88rem;
       white-space: pre-wrap;
       word-break: break-word;
-      margin-top: 0.25rem;
+      margin: 0 0 0.75rem;
     }
-    .log-r.expanded { color: var(--ink); }
     .detail {
       display: none;
       margin-top: 0.75rem;
@@ -136,6 +135,14 @@
       border-top: 1px solid var(--line);
     }
     .log-item.open .detail { display: block; }
+    .log-item .chev {
+      float: right;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 600;
+      margin-top: 0.1rem;
+    }
+    .log-item.open .chev { color: var(--accent); }
     .detail h3 {
       margin: 0 0 0.45rem;
       font-size: 0.85rem;
@@ -394,10 +401,8 @@
       return bits.join("");
     }
 
-    function answerText(it, open) {
-      const full = it.result_full || it.result || "";
-      if (open) return full || "—";
-      return it.result || full || "—";
+    function answerText(it) {
+      return it.result_full || it.result || "—";
     }
 
     function renderMessages(messages) {
@@ -481,7 +486,6 @@
       const isRec = selectedService === "recommend";
       logsEl.innerHTML = items.map(it => {
         const open = expanded.has(it.task_id);
-        const body = answerText(it, open);
         let detailHtml = "";
         if (open) {
           if (isRec) {
@@ -491,8 +495,12 @@
           }
         }
         const detailTitle = isRec ? "转义 / 过滤 / 召回 / 通过" : "LLM 输入 / 输出（含 COT）";
+        const answerBlock = open
+          ? `<h3>回答</h3><div class="log-r">${escapeHtml(answerText(it))}</div>`
+          : "";
         return `
-        <article class="log-item${open ? " open" : ""}" data-id="${escapeHtml(it.task_id)}">
+        <article class="log-item${open ? " open" : ""}" data-id="${escapeHtml(it.task_id)}" title="点击查看详情">
+          <span class="chev">${open ? "收起" : "详情"}</span>
           <div class="log-head">
             <span>${escapeHtml(it.time)}</span>
             ${isRec ? "" : `<span>${escapeHtml(it.user)}</span>`}
@@ -504,9 +512,8 @@
             ${isRec && it.recalled_n != null ? `<span>召回 ${it.recalled_n} · 通过 ${it.passed_n || 0}</span>` : ""}
           </div>
           <div class="log-q">${escapeHtml(it.question)}</div>
-          <div class="log-r ${open ? "expanded" : ""}">${escapeHtml(body)}</div>
-          <button type="button" class="linkish btn-expand" data-id="${escapeHtml(it.task_id)}">${open ? "收起详情" : "展开详情"}</button>
           <div class="detail">
+            ${answerBlock}
             <h3>${detailTitle}</h3>
             <div class="llm-box" data-id="${escapeHtml(it.task_id)}">${detailHtml}</div>
           </div>
@@ -552,37 +559,35 @@
       const article = logsEl.querySelector('.log-item[data-id="' + CSS.escape(id) + '"]');
       if (!article) return;
       article.classList.toggle("open", open);
-      const body = article.querySelector(".log-r");
-      if (body) {
-        body.textContent = answerText(it, open);
-        body.classList.toggle("expanded", open);
+      const chev = article.querySelector(".chev");
+      if (chev) chev.textContent = open ? "收起" : "详情";
+      const detail = article.querySelector(".detail");
+      if (!detail) return;
+      const isRec = selectedService === "recommend";
+      const detailTitle = isRec ? "转义 / 过滤 / 召回 / 通过" : "LLM 输入 / 输出（含 COT）";
+      if (!open) {
+        detail.innerHTML = `<h3>${detailTitle}</h3><div class="llm-box" data-id="${escapeHtml(id)}"></div>`;
+        return;
       }
-      const btn = article.querySelector(".btn-expand");
-      if (btn) btn.textContent = open ? "收起详情" : "展开详情";
-      const box = article.querySelector(".llm-box");
-      if (open && box) {
-        if (selectedService === "recommend") {
-          box.innerHTML = renderRecommendBlock(id, null);
-          const data = await ensureRecommend(id);
-          if (expanded.has(id) && box) box.innerHTML = renderRecommendBlock(id, data);
-        } else {
-          box.innerHTML = renderLlmBlock(id, null);
-          const data = await ensureLlm(id);
-          if (expanded.has(id) && box) box.innerHTML = renderLlmBlock(id, data);
-        }
+      detail.innerHTML =
+        `<h3>回答</h3><div class="log-r">${escapeHtml(answerText(it))}</div>`
+        + `<h3>${detailTitle}</h3>`
+        + `<div class="llm-box" data-id="${escapeHtml(id)}">加载中…</div>`;
+      const box = detail.querySelector(".llm-box");
+      if (isRec) {
+        box.innerHTML = renderRecommendBlock(id, null);
+        const data = await ensureRecommend(id);
+        if (expanded.has(id) && box) box.innerHTML = renderRecommendBlock(id, data);
+      } else {
+        box.innerHTML = renderLlmBlock(id, null);
+        const data = await ensureLlm(id);
+        if (expanded.has(id) && box) box.innerHTML = renderLlmBlock(id, data);
       }
     }
 
     logsEl.addEventListener("click", (ev) => {
-      const btn = ev.target.closest(".btn-expand");
       const article = ev.target.closest(".log-item");
-      if (btn) {
-        ev.stopPropagation();
-        const id = btn.getAttribute("data-id");
-        if (id) toggleExpand(id);
-        return;
-      }
-      if (ev.target.closest("details") || ev.target.closest("a") || ev.target.closest("pre")) {
+      if (ev.target.closest("details") || ev.target.closest("a") || ev.target.closest("pre") || ev.target.closest("button")) {
         return;
       }
       if (article) {

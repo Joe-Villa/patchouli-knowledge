@@ -29,8 +29,7 @@ class ConsoleSettings:
     port: int
     password: str
     data_dir: Path
-    framework_log_dir: Path
-    proxy_store_path: Path
+    console_log_dir: Path
     reqlog_dir: Path
     recommend_log_dir: Path
     log_limit: int
@@ -38,9 +37,9 @@ class ConsoleSettings:
 
 
 def load_console_settings() -> ConsoleSettings:
-    # 控制台自身日志写在 log/1453；读写 1836/1837 也走约定路径
-    log_raw = _env("FRAMEWORK_LOG_DIR", str(_LOG_1453))
-    proxy_raw = _env("PROXY_STORE_PATH", str(_ROOT / "runtime" / "proxy_tables.json"))
+    # 控制台自身日志写在 log/1453；读写 1836/1837 走约定路径
+    # FRAMEWORK_LOG_DIR 兼容旧 env，映射为 console 自写目录
+    log_raw = _env("FRAMEWORK_LOG_DIR") or _env("CONSOLE_LOG_DIR", str(_LOG_1453))
     data_raw = _env("CONSOLE_DATA_DIR", str(_ROOT / "console_data"))
     req_raw = _env("REQLOG_DIR", str(_LOG_1836))
     rec_raw = _env("RECOMMEND_LOG_DIR", str(_LOG_1837))
@@ -51,8 +50,7 @@ def load_console_settings() -> ConsoleSettings:
         port=max(1, int(_env("CONSOLE_PORT", "1453"))),
         password=pwd,
         data_dir=Path(data_raw).expanduser().resolve(),
-        framework_log_dir=Path(log_raw).expanduser().resolve(),
-        proxy_store_path=Path(proxy_raw).expanduser().resolve(),
+        console_log_dir=Path(log_raw).expanduser().resolve(),
         reqlog_dir=Path(req_raw).expanduser().resolve(),
         recommend_log_dir=Path(rec_raw).expanduser().resolve(),
         log_limit=max(10, int(_env("CONSOLE_LOG_LIMIT", "200"))),

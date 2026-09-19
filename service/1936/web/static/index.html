@@ -1,0 +1,1385 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0e1218" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>帕秋莉 HOI4</title>
+  <!-- ui:corpus-pool-v2 -->
+  <style>
+    :root {
+      --bg: #0e1218;
+      --bg-elev: #161c26;
+      --ink: #e6eaf0;
+      --muted: #8b95a5;
+      --paper: #1c2430;
+      --line: #2a3342;
+      --user: #c9d0db;
+      --accent: #a89bc8;
+      --accent-dim: rgba(168, 155, 200, 0.22);
+      --status: #7a8699;
+      --bar: #a89bc8;
+      --danger: #c47a7a;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --header-h: 3.25rem;
+      --composer-min: 3.75rem;
+      --drawer-w: min(18rem, 86vw);
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "PingFang SC", "Noto Sans SC", "Source Han Sans SC",
+        "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-text-size-adjust: 100%;
+    }
+    body {
+      min-height: 100dvh;
+      background:
+        radial-gradient(ellipse 120% 60% at 50% -10%, #1a2230 0%, transparent 55%),
+        linear-gradient(180deg, #0e1218 0%, #0b0f14 100%);
+    }
+    .app {
+      max-width: 40rem;
+      margin: 0 auto;
+      height: 100dvh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      padding-top: var(--safe-top);
+      position: relative;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      min-height: var(--header-h);
+      padding: 0.65rem 0.75rem;
+      border-bottom: 1px solid var(--line);
+      background: rgba(14, 18, 24, 0.92);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      min-width: 0;
+      flex: 1;
+    }
+    .icon-btn {
+      flex-shrink: 0;
+      min-width: 2.4rem;
+      min-height: 2.4rem;
+      padding: 0 0.55rem;
+      border: 1px solid var(--line);
+      border-radius: 0.65rem;
+      background: var(--bg-elev);
+      color: var(--ink);
+      font: inherit;
+      font-size: 0.82rem;
+      cursor: pointer;
+    }
+    .icon-btn:active { transform: scale(0.96); }
+    .brand {
+      display: flex;
+      flex-direction: column;
+      gap: 0.1rem;
+      min-width: 0;
+    }
+    .brand h1 {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: var(--ink);
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .brand .sub {
+      font-size: 0.72rem;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #conn {
+      flex-shrink: 0;
+      font-size: 0.72rem;
+      color: var(--muted);
+      padding: 0.28rem 0.55rem;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--bg-elev);
+    }
+    #conn.ok { color: var(--accent); border-color: var(--accent-dim); }
+    #conn.bad { color: var(--danger); }
+
+    #log {
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 0.85rem 0.9rem 0.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.7rem;
+      overscroll-behavior: contain;
+    }
+    .msg {
+      max-width: 92%;
+      padding: 0.7rem 0.85rem;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 0.95rem;
+      animation: msgIn 0.28s ease-out;
+    }
+    @keyframes msgIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: none; }
+    }
+    .msg.user {
+      align-self: flex-end;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 1rem 1rem 0.25rem 1rem;
+      color: var(--user);
+    }
+    .msg.bot {
+      align-self: flex-start;
+      background: transparent;
+      border-left: 2px solid var(--accent);
+      border-radius: 0;
+      padding-left: 0.8rem;
+      color: var(--ink);
+    }
+    .msg.status {
+      align-self: center;
+      max-width: 95%;
+      color: var(--status);
+      font-size: 0.8rem;
+      border: none;
+      padding: 0.2rem 0.5rem;
+      text-align: center;
+    }
+    .msg .meta {
+      display: block;
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-bottom: 0.3rem;
+    }
+
+    .task-progress {
+      align-self: stretch;
+      max-width: 100%;
+      padding: 0.55rem 0.75rem;
+      border: 1px solid var(--line);
+      border-radius: 0.65rem;
+      background: var(--bg-elev);
+      animation: msgIn 0.28s ease-out;
+    }
+    .task-progress .q {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .task-progress .label {
+      font-size: 0.78rem;
+      color: var(--status);
+      margin-bottom: 0.35rem;
+    }
+    .task-progress .track {
+      height: 0.28rem;
+      background: var(--line);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .task-progress .fill {
+      height: 100%;
+      width: 0%;
+      background: var(--bar);
+      border-radius: 999px;
+      transition: width 0.28s ease;
+    }
+
+    .bottom {
+      border-top: 1px solid var(--line);
+      background: rgba(14, 18, 24, 0.96);
+      padding-bottom: var(--safe-bottom);
+    }
+    .corpus-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.55rem 0.75rem 0;
+    }
+    .corpus-bar .hint {
+      flex: 1 1 100%;
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin: 0 0 0.1rem;
+    }
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.35rem;
+      min-width: 0;
+      flex: 1;
+    }
+    .tag-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      max-width: 100%;
+      padding: 0.28rem 0.45rem 0.28rem 0.55rem;
+      border: 1px solid var(--accent-dim);
+      border-radius: 0.55rem;
+      background: rgba(168, 155, 200, 0.12);
+      color: var(--ink);
+      font-size: 0.78rem;
+      line-height: 1.2;
+    }
+    .tag-chip span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 10rem;
+    }
+    .tag-chip button {
+      flex-shrink: 0;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-size: 0.9rem;
+      line-height: 1;
+      padding: 0 0.15rem;
+      cursor: pointer;
+    }
+    .corpus-bar .add-wrap {
+      position: relative;
+      flex-shrink: 0;
+    }
+    .corpus-bar .toggle-btn,
+    .corpus-bar .add-btn,
+    .corpus-bar .status-btn {
+      flex-shrink: 0;
+      min-height: 2rem;
+      padding: 0.28rem 0.65rem;
+      border: 1px solid var(--line);
+      border-radius: 0.55rem;
+      background: var(--bg-elev);
+      color: var(--ink);
+      font: inherit;
+      font-size: 0.78rem;
+      cursor: pointer;
+    }
+    .corpus-bar .toggle-btn.on,
+    .corpus-bar .status-btn.on {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+      color: var(--accent);
+    }
+    .corpus-bar .add-btn:disabled,
+    .corpus-bar .toggle-btn:disabled,
+    .corpus-bar .status-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .status-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      flex: 1 1 100%;
+    }
+    .tag-chip button:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+    .corpus-bar.locked .tag-chip {
+      opacity: 0.85;
+    }
+    .mod-picker {
+      position: absolute;
+      left: 0;
+      bottom: calc(100% + 0.3rem);
+      z-index: 30;
+      width: min(18rem, 78vw);
+      max-height: 14rem;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 0.65rem;
+      background: var(--bg-elev);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+      display: none;
+    }
+    .mod-picker.open { display: block; }
+    .mod-picker input {
+      width: 100%;
+      border: none;
+      border-bottom: 1px solid var(--line);
+      background: transparent;
+      color: var(--ink);
+      font: inherit;
+      font-size: 0.82rem;
+      padding: 0.55rem 0.65rem;
+      outline: none;
+    }
+    .mod-picker button.opt {
+      display: block;
+      width: 100%;
+      text-align: left;
+      border: none;
+      border-top: 1px solid transparent;
+      background: transparent;
+      color: var(--ink);
+      font: inherit;
+      font-size: 0.8rem;
+      padding: 0.5rem 0.65rem;
+      cursor: pointer;
+    }
+    .mod-picker button.opt:hover,
+    .mod-picker button.opt:focus {
+      background: rgba(168, 155, 200, 0.14);
+    }
+    .mod-picker .empty {
+      padding: 0.65rem;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    form {
+      display: flex;
+      align-items: flex-end;
+      gap: 0.55rem;
+      padding: 0.55rem 0.75rem 0.75rem;
+      min-height: var(--composer-min);
+    }
+    textarea {
+      flex: 1;
+      resize: none;
+      min-height: 2.75rem;
+      max-height: 7.5rem;
+      padding: 0.7rem 0.85rem;
+      border: 1px solid var(--line);
+      background: var(--bg-elev);
+      color: var(--ink);
+      font: inherit;
+      font-size: 1rem;
+      border-radius: 1rem;
+      outline: none;
+      line-height: 1.4;
+    }
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-dim);
+    }
+    textarea::placeholder { color: var(--muted); }
+    button#send {
+      flex-shrink: 0;
+      min-width: 4.25rem;
+      min-height: 2.75rem;
+      padding: 0 1rem;
+      border: none;
+      background: var(--accent);
+      color: #12151c;
+      font: inherit;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: 1rem;
+      transition: transform 0.12s ease, opacity 0.15s ease, filter 0.15s ease;
+    }
+    button#send:active:not(:disabled) {
+      transform: scale(0.96);
+    }
+    button#send:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      filter: grayscale(0.3);
+    }
+
+    /* 侧栏 */
+    .scrim {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      z-index: 40;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    .scrim.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .drawer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: var(--drawer-w);
+      z-index: 50;
+      background: var(--bg-elev);
+      border-right: 1px solid var(--line);
+      padding: calc(var(--safe-top) + 0.75rem) 0.75rem calc(var(--safe-bottom) + 0.75rem);
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      transform: translateX(-105%);
+      transition: transform 0.22s ease;
+    }
+    .drawer.open { transform: none; }
+    .drawer-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+    .drawer-head h2 {
+      margin: 0;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+    .drawer-actions {
+      display: flex;
+      gap: 0.4rem;
+    }
+    #conv-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      overflow-y: auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    #conv-list li {
+      display: flex;
+      align-items: stretch;
+      gap: 0.25rem;
+    }
+    .conv-item {
+      flex: 1;
+      min-width: 0;
+      text-align: left;
+      padding: 0.65rem 0.7rem;
+      border: 1px solid var(--line);
+      border-radius: 0.65rem;
+      background: var(--bg);
+      color: var(--ink);
+      font: inherit;
+      font-size: 0.88rem;
+      cursor: pointer;
+    }
+    .conv-item.active {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+    .conv-item .title {
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .conv-item .hint {
+      display: block;
+      margin-top: 0.2rem;
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+    .conv-item .hint.busy { color: var(--accent); }
+    .conv-del {
+      flex-shrink: 0;
+      width: 2.2rem;
+      border: 1px solid var(--line);
+      border-radius: 0.65rem;
+      background: transparent;
+      color: var(--muted);
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .conv-del:hover { color: var(--danger); border-color: var(--danger); }
+
+    @media (min-width: 640px) {
+      .app {
+        border-left: 1px solid var(--line);
+        border-right: 1px solid var(--line);
+      }
+      .brand h1 { font-size: 1.15rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="scrim" id="scrim" aria-hidden="true"></div>
+  <aside class="drawer" id="drawer" aria-label="对话列表">
+    <div class="drawer-head">
+      <h2>对话</h2>
+      <div class="drawer-actions">
+        <button type="button" class="icon-btn" id="btn-new">新建</button>
+        <button type="button" class="icon-btn" id="btn-close-drawer">关闭</button>
+      </div>
+    </div>
+    <ul id="conv-list"></ul>
+  </aside>
+
+  <div class="app">
+    <header>
+      <div class="header-left">
+        <button type="button" class="icon-btn" id="btn-menu" aria-label="打开对话列表">☰ 对话</button>
+        <div class="brand">
+          <h1 id="active-title">帕秋莉 HOI4</h1>
+          <span class="sub">本机设备身份 · 历史从服务端同步</span>
+        </div>
+      </div>
+      <span id="conn">连接中…</span>
+    </header>
+    <div id="log" aria-live="polite"></div>
+    <div class="bottom">
+      <div class="corpus-bar" id="corpus-bar">
+        <p class="hint" id="corpus-hint">类别：通用 — 未选标签时 Agent 可见本类别全部模组（+原版）；也可加最多 2 个标签锁定。</p>
+        <div class="status-row" id="status-row" role="group" aria-label="资料库类别">
+          <button type="button" class="status-btn on" data-status="common" aria-pressed="true">通用</button>
+          <button type="button" class="status-btn" data-status="vanillaonly" aria-pressed="false">只看原版</button>
+        </div>
+        <div class="tag-list" id="tag-list" aria-label="已选模组标签"></div>
+        <div class="add-wrap">
+          <button type="button" class="add-btn" id="btn-add-tag">+ 标签</button>
+          <div class="mod-picker" id="mod-picker" role="listbox" aria-label="选择模组">
+            <input type="search" id="mod-filter" placeholder="搜索模组…" autocomplete="off" />
+            <div id="mod-options"></div>
+          </div>
+        </div>
+      </div>
+      <form id="form">
+        <textarea id="q" rows="1" placeholder="问钢铁雄心4…" required enterkeyhint="send"></textarea>
+        <button type="submit" id="send">发送</button>
+      </form>
+    </div>
+  </div>
+    <script>
+    const STORAGE_KEY = "patchouli_web_chat_v2";
+    const DEVICE_KEY = "patchouli_web_device_v1";
+    const LEGACY_KEY = "patchouli_web_chat_v1";
+    const TITLE_MAX = 24;
+    const MAX_TAGS = 2;
+    const STATUSES = [
+      { id: "common", label: "通用" },
+      { id: "vanillaonly", label: "只看原版" },
+    ];
+
+    const logEl = document.getElementById("log");
+    const form = document.getElementById("form");
+    const qEl = document.getElementById("q");
+    const sendBtn = document.getElementById("send");
+    const connEl = document.getElementById("conn");
+    const drawer = document.getElementById("drawer");
+    const scrim = document.getElementById("scrim");
+    const convListEl = document.getElementById("conv-list");
+    const activeTitleEl = document.getElementById("active-title");
+    const tagListEl = document.getElementById("tag-list");
+    const corpusHintEl = document.getElementById("corpus-hint");
+    const btnAddTag = document.getElementById("btn-add-tag");
+    const statusRow = document.getElementById("status-row");
+    const modPicker = document.getElementById("mod-picker");
+    const modFilter = document.getElementById("mod-filter");
+    const modOptions = document.getElementById("mod-options");
+
+    /** @type {{conversations: {id:string,title:string,updatedAt:number,messages:{role:string,text:string,meta?:string}[],corpus?:{status:string,mode:string,mod_ids:string[]}}[], activeId:string}} */
+    let store = { conversations: [], activeId: "" };
+    /** @type {{id:string,short:string,name:string,label:string,category:string}[]} */
+    let modsCatalog = [];
+    const generating = new Set();
+    const taskConv = new Map();
+    const pending = new Map();
+    const pendingMeta = new Map();
+
+    let ws = null;
+    let wsOpen = false;
+    let deviceId = "";
+
+    function defaultCorpus() {
+      return { status: "common", mode: "auto", mod_ids: [] };
+    }
+
+    function normalizeStatus(raw) {
+      const s = String(raw || "common").toLowerCase().replace(/[-_]/g, "");
+      if (s === "vanilla" || s === "vanillaonly" || s === "onlyvanilla") return "vanillaonly";
+      return "common";
+    }
+
+    function normalizeCorpus(raw) {
+      const base = defaultCorpus();
+      if (!raw || typeof raw !== "object") return base;
+      let status = normalizeStatus(raw.status);
+      const mode = String(raw.mode || "auto").toLowerCase();
+      const ids = [];
+      const src = Array.isArray(raw.mod_ids) ? raw.mod_ids : [];
+      for (const item of src) {
+        const mid = String(item || "").trim();
+        if (mid && !ids.includes(mid)) ids.push(mid);
+        if (ids.length >= MAX_TAGS) break;
+      }
+      if (mode === "vanilla" || mode === "vanilla_only" || status === "vanillaonly") {
+        return { status: "vanillaonly", mode: "vanilla", mod_ids: [] };
+      }
+      if (mode === "mods" || ids.length) {
+        return ids.length
+          ? { status, mode: "mods", mod_ids: ids.slice(0, MAX_TAGS) }
+          : { status, mode: "auto", mod_ids: [] };
+      }
+      return { status, mode: "auto", mod_ids: [] };
+    }
+
+    function ensureConvCorpus(conv) {
+      if (!conv) return defaultCorpus();
+      conv.corpus = normalizeCorpus(conv.corpus);
+      return conv.corpus;
+    }
+
+    function modsForStatus(status) {
+      const st = normalizeStatus(status);
+      if (st === "vanillaonly") return [];
+      return modsCatalog.filter((m) => (m.category || "common") === st);
+    }
+
+    function modLabel(id) {
+      const m = modsCatalog.find((x) => x.id === id);
+      if (m) return m.label || m.name || m.id;
+      return id;
+    }
+
+    function setPickerOpen(open) {
+      modPicker.classList.toggle("open", open);
+      if (open) {
+        modFilter.value = "";
+        renderModOptions();
+        setTimeout(() => modFilter.focus(), 0);
+      }
+    }
+
+    function renderCorpusBar() {
+      const conv = activeConv();
+      const corpus = ensureConvCorpus(conv);
+      const status = normalizeStatus(corpus.status);
+      const vanilla = status === "vanillaonly";
+      const tags = corpus.mode === "mods" ? corpus.mod_ids : [];
+      const busy = !!(conv && generating.has(conv.id));
+      const pool = modsForStatus(status);
+      const bar = document.getElementById("corpus-bar");
+      if (bar) bar.classList.toggle("locked", busy);
+      tagListEl.innerHTML = "";
+      for (const id of tags) {
+        const chip = document.createElement("div");
+        chip.className = "tag-chip";
+        const label = document.createElement("span");
+        label.textContent = modLabel(id);
+        label.title = id;
+        const rm = document.createElement("button");
+        rm.type = "button";
+        rm.setAttribute("aria-label", "移除标签");
+        rm.textContent = "×";
+        rm.disabled = busy;
+        rm.addEventListener("click", () => removeTag(id));
+        chip.appendChild(label);
+        chip.appendChild(rm);
+        tagListEl.appendChild(chip);
+      }
+      statusRow.querySelectorAll(".status-btn").forEach((btn) => {
+        const on = btn.getAttribute("data-status") === status;
+        btn.classList.toggle("on", on);
+        btn.setAttribute("aria-pressed", on ? "true" : "false");
+        btn.disabled = busy;
+      });
+      btnAddTag.disabled =
+        busy || vanilla || tags.length >= MAX_TAGS || !pool.length;
+      const statusLabel =
+        STATUSES.find((x) => x.id === status)?.label || status;
+      if (busy) {
+        corpusHintEl.textContent =
+          "本对话生成中：资料库类别与标签已锁定，不可更改。";
+      } else if (vanilla) {
+        corpusHintEl.textContent =
+          "类别：只看原版 — Agent 看不到任何模组，只参考原版文件。";
+      } else if (tags.length) {
+        const names = tags.map(modLabel).join("、");
+        corpusHintEl.textContent =
+          tags.length === 1
+            ? `类别：${statusLabel} · 已选「${names}」— 只会参考该模组；必要时才看原版。`
+            : `类别：${statusLabel} · 已选「${names}」— 双方对比；必要时才看原版。`;
+      } else if (!pool.length) {
+        corpusHintEl.textContent =
+          `类别：${statusLabel} — 该类别暂无模组可自动判断；请切回通用，或选「只看原版」。`;
+      } else {
+        corpusHintEl.textContent =
+          `类别：${statusLabel} — 未选标签时 Agent 可见本类别全部模组（+原版对照）；也可加最多 2 个标签锁定。其它类别不可见。`;
+      }
+      if (busy || vanilla || tags.length >= MAX_TAGS) setPickerOpen(false);
+    }
+
+    function persistCorpus() {
+      const conv = activeConv();
+      if (!conv) return;
+      ensureConvCorpus(conv);
+      saveStore();
+      renderCorpusBar();
+    }
+
+    function corpusBusy() {
+      const conv = activeConv();
+      return !!(conv && generating.has(conv.id));
+    }
+
+    function setStatus(next) {
+      if (corpusBusy()) return;
+      const conv = activeConv();
+      if (!conv) return;
+      const status = normalizeStatus(next);
+      if (status === "vanillaonly") {
+        conv.corpus = { status: "vanillaonly", mode: "vanilla", mod_ids: [] };
+      } else {
+        const prev = ensureConvCorpus(conv);
+        const poolIds = new Set(modsForStatus(status).map((m) => m.id));
+        const kept = (prev.mod_ids || []).filter((id) => poolIds.has(id));
+        conv.corpus = kept.length
+          ? { status, mode: "mods", mod_ids: kept.slice(0, MAX_TAGS) }
+          : { status, mode: "auto", mod_ids: [] };
+      }
+      persistCorpus();
+    }
+
+    function addTag(modId) {
+      if (corpusBusy()) return;
+      const conv = activeConv();
+      if (!conv) return;
+      const corpus = ensureConvCorpus(conv);
+      if (corpus.status === "vanillaonly") return;
+      const id = String(modId || "").trim();
+      if (!id) return;
+      const poolIds = new Set(modsForStatus(corpus.status).map((m) => m.id));
+      if (!poolIds.has(id)) return;
+      const ids = corpus.mode === "mods" ? corpus.mod_ids.slice() : [];
+      if (ids.includes(id) || ids.length >= MAX_TAGS) return;
+      ids.push(id);
+      conv.corpus = {
+        status: corpus.status,
+        mode: "mods",
+        mod_ids: ids,
+      };
+      setPickerOpen(false);
+      persistCorpus();
+    }
+
+    function removeTag(modId) {
+      if (corpusBusy()) return;
+      const conv = activeConv();
+      if (!conv) return;
+      const corpus = ensureConvCorpus(conv);
+      const ids = (corpus.mod_ids || []).filter((x) => x !== modId);
+      conv.corpus = ids.length
+        ? { status: corpus.status, mode: "mods", mod_ids: ids }
+        : { status: corpus.status, mode: "auto", mod_ids: [] };
+      persistCorpus();
+    }
+
+    function renderModOptions() {
+      const q = (modFilter.value || "").trim().toLowerCase();
+      const conv = activeConv();
+      const corpus = ensureConvCorpus(conv);
+      const pool = modsForStatus(corpus.status);
+      const taken = new Set(corpus.mode === "mods" ? corpus.mod_ids : []);
+      modOptions.innerHTML = "";
+      const matched = pool.filter((m) => {
+        if (taken.has(m.id)) return false;
+        if (!q) return true;
+        const hay = [m.id, m.short, m.name, m.label, String(m.start_year ?? "")].join(" ").toLowerCase();
+        return hay.includes(q);
+      });
+      if (!matched.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = pool.length ? "无匹配模组" : "该类别暂无模组";
+        modOptions.appendChild(empty);
+        return;
+      }
+      for (const m of matched) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "opt";
+        btn.textContent = m.label || m.name || m.id;
+        btn.title = m.id;
+        btn.addEventListener("click", () => addTag(m.id));
+        modOptions.appendChild(btn);
+      }
+    }
+
+    async function fetchModsCatalog() {
+      try {
+        const res = await fetch("/api/mods");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data || !data.ok || !Array.isArray(data.mods)) return;
+        modsCatalog = data.mods.map((m) => ({
+          ...m,
+          category: m.category || "common",
+        }));
+        renderCorpusBar();
+      } catch (_) {}
+    }
+
+    function newId() {
+      if (crypto.randomUUID) return crypto.randomUUID().replace(/-/g, "").slice(0, 32);
+      return "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+    }
+
+    function ensureDeviceId() {
+      try {
+        const existing = localStorage.getItem(DEVICE_KEY);
+        if (existing && /^[A-Za-z0-9_-]{1,64}$/.test(existing)) {
+          deviceId = existing;
+          return deviceId;
+        }
+      } catch (_) {}
+      deviceId = "d" + newId().slice(0, 31);
+      try { localStorage.setItem(DEVICE_KEY, deviceId); } catch (_) {}
+      return deviceId;
+    }
+
+    function blankConv(title) {
+      return {
+        id: newId(),
+        title: title || "新对话",
+        updatedAt: Date.now(),
+        messages: [],
+        corpus: defaultCorpus(),
+      };
+    }
+
+    function loadStore() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const data = JSON.parse(raw);
+          if (data && Array.isArray(data.conversations) && data.conversations.length) {
+            store = data;
+            for (const c of store.conversations) {
+              c.corpus = normalizeCorpus(c.corpus);
+            }
+            if (!store.conversations.some((c) => c.id === store.activeId)) {
+              store.activeId = store.conversations[0].id;
+            }
+            return;
+          }
+        }
+      } catch (_) {}
+
+      let legacy = null;
+      try {
+        const raw = sessionStorage.getItem(LEGACY_KEY);
+        if (raw) {
+          const arr = JSON.parse(raw);
+          if (Array.isArray(arr) && arr.length) legacy = arr;
+        }
+      } catch (_) {}
+
+      const first = blankConv(legacy ? "对话 1" : "新对话");
+      if (legacy) {
+        first.messages = legacy.map((m) => ({
+          role: m.role,
+          text: m.text,
+          meta: m.meta,
+        }));
+        const firstUser = first.messages.find((m) => m.role === "user");
+        if (firstUser) first.title = truncateTitle(firstUser.text);
+      }
+      store = { conversations: [first], activeId: first.id };
+      saveStore();
+      try { sessionStorage.removeItem(LEGACY_KEY); } catch (_) {}
+    }
+
+    function saveStore() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+      } catch (_) {}
+    }
+
+    function applyServerConversations(serverList) {
+      const prevActive = store.activeId;
+      const localById = new Map(store.conversations.map((c) => [c.id, c]));
+      const localEmpty = store.conversations.filter(
+        (c) => (!c.messages || c.messages.length === 0) && !generating.has(c.id)
+      );
+      const byId = new Map();
+      for (const c of serverList || []) {
+        if (!c || !c.id) continue;
+        const prev = localById.get(c.id);
+        byId.set(c.id, {
+          id: c.id,
+          title: c.title || "新对话",
+          updatedAt: Number(c.updatedAt) || 0,
+          messages: Array.isArray(c.messages) ? c.messages : [],
+          corpus: normalizeCorpus(prev && prev.corpus),
+        });
+      }
+      for (const c of localEmpty) {
+        if (!byId.has(c.id)) byId.set(c.id, c);
+      }
+      for (const c of store.conversations) {
+        if (generating.has(c.id)) byId.set(c.id, c);
+      }
+      let list = Array.from(byId.values());
+      list.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      if (!list.length) {
+        list = [blankConv()];
+      }
+      store.conversations = list;
+      if (prevActive && list.some((c) => c.id === prevActive)) {
+        store.activeId = prevActive;
+      } else {
+        store.activeId = list[0].id;
+      }
+      saveStore();
+    }
+
+    async function fetchServerHistory() {
+      if (!deviceId) return;
+      try {
+        const res = await fetch(
+          "/api/conversations?device_id=" + encodeURIComponent(deviceId)
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data || !data.ok) return;
+        applyServerConversations(data.conversations || []);
+        renderHistory();
+        renderConvList();
+      } catch (_) {}
+    }
+
+    function activeConv() {
+      return store.conversations.find((c) => c.id === store.activeId) || null;
+    }
+
+    function truncateTitle(text) {
+      const t = String(text || "").replace(/\s+/g, " ").trim();
+      if (!t) return "新对话";
+      return t.length <= TITLE_MAX ? t : t.slice(0, TITLE_MAX) + "…";
+    }
+
+    function setDrawer(open) {
+      drawer.classList.toggle("open", open);
+      scrim.classList.toggle("open", open);
+      scrim.setAttribute("aria-hidden", open ? "false" : "true");
+    }
+
+    function setConn(text, kind) {
+      connEl.textContent = text;
+      connEl.classList.remove("ok", "bad");
+      if (kind) connEl.classList.add(kind);
+    }
+
+    function syncSendBtn() {
+      const locked = generating.has(store.activeId);
+      sendBtn.disabled = !wsOpen || locked;
+      qEl.placeholder = locked
+        ? "本对话生成中…可切换到其他对话提问"
+        : "问钢铁雄心4…";
+    }
+
+    function scrollBottom() {
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function appendMsgNode(role, text, meta) {
+      const div = document.createElement("div");
+      div.className = "msg " + role;
+      if (meta) {
+        const m = document.createElement("span");
+        m.className = "meta";
+        m.textContent = meta;
+        div.appendChild(m);
+      }
+      div.appendChild(document.createTextNode(text));
+      logEl.appendChild(div);
+      scrollBottom();
+      return div;
+    }
+
+    function pushToConv(convId, role, text, meta) {
+      const conv = store.conversations.find((c) => c.id === convId);
+      if (!conv) return;
+      conv.messages.push({ role, text, meta });
+      conv.updatedAt = Date.now();
+      if (role === "user" && (conv.title === "新对话" || conv.title === "对话 1")) {
+        conv.title = truncateTitle(text);
+      }
+      saveStore();
+      if (convId === store.activeId) {
+        appendMsgNode(role, text, meta);
+        renderConvList();
+      } else {
+        renderConvList();
+      }
+    }
+
+    function renderHistory() {
+      logEl.innerHTML = "";
+      pending.clear();
+      const conv = activeConv();
+      if (!conv) return;
+      for (const m of conv.messages) {
+        appendMsgNode(m.role, m.text, m.meta);
+      }
+      const meta = pendingMeta.get(conv.id);
+      if (meta && generating.has(conv.id)) {
+        ensureProgress(meta.taskId || ("ghost-" + conv.id), meta.question || "", conv.id);
+        updateProgress(
+          meta.taskId || ("ghost-" + conv.id),
+          meta.pct || 2,
+          meta.label || "处理中…",
+          meta.question || "",
+          conv.id
+        );
+      }
+      activeTitleEl.textContent = conv.title || "帕秋莉 HOI4";
+      syncSendBtn();
+      renderCorpusBar();
+    }
+
+    function renderConvList() {
+      convListEl.innerHTML = "";
+      const sorted = store.conversations.slice().sort((a, b) => b.updatedAt - a.updatedAt);
+      for (const c of sorted) {
+        const li = document.createElement("li");
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "conv-item" + (c.id === store.activeId ? " active" : "");
+        const title = document.createElement("span");
+        title.className = "title";
+        title.textContent = c.title || "新对话";
+        btn.appendChild(title);
+        if (generating.has(c.id)) {
+          const hint = document.createElement("span");
+          hint.className = "hint busy";
+          hint.textContent = "生成中…";
+          btn.appendChild(hint);
+        }
+        btn.addEventListener("click", () => {
+          switchConv(c.id);
+          setDrawer(false);
+        });
+        const del = document.createElement("button");
+        del.type = "button";
+        del.className = "conv-del";
+        del.title = "删除";
+        del.textContent = "×";
+        del.addEventListener("click", (e) => {
+          e.stopPropagation();
+          deleteConv(c.id);
+        });
+        li.appendChild(btn);
+        li.appendChild(del);
+        convListEl.appendChild(li);
+      }
+    }
+
+    function switchConv(id) {
+      if (!store.conversations.some((c) => c.id === id)) return;
+      store.activeId = id;
+      saveStore();
+      renderHistory();
+      renderConvList();
+    }
+
+    function createConv() {
+      const c = blankConv();
+      store.conversations.unshift(c);
+      store.activeId = c.id;
+      saveStore();
+      renderHistory();
+      renderConvList();
+      setDrawer(false);
+      qEl.focus();
+    }
+
+    function removeConvLocally(id) {
+      if (store.conversations.length <= 1) {
+        const only = store.conversations[0];
+        only.id = newId();
+        only.messages = [];
+        only.title = "新对话";
+        only.updatedAt = Date.now();
+        only.corpus = defaultCorpus();
+        store.activeId = only.id;
+        saveStore();
+        renderHistory();
+        renderConvList();
+        return;
+      }
+      store.conversations = store.conversations.filter((c) => c.id !== id);
+      if (store.activeId === id) {
+        store.activeId = store.conversations[0].id;
+      }
+      saveStore();
+      renderHistory();
+      renderConvList();
+    }
+
+    async function deleteConv(id) {
+      if (generating.has(id)) {
+        alert("该对话正在生成，完成后再删");
+        return;
+      }
+      const conv = store.conversations.find((c) => c.id === id);
+      const title = (conv && conv.title) ? conv.title : "此对话";
+      if (!confirm("确定删除「" + title + "」？\n删除后你将无法再看到它。")) {
+        return;
+      }
+      const hadMessages = !!(conv && conv.messages && conv.messages.length);
+      if (hadMessages && deviceId) {
+        try {
+          const res = await fetch(
+            "/api/conversations/" + encodeURIComponent(id)
+              + "?device_id=" + encodeURIComponent(deviceId),
+            { method: "DELETE" }
+          );
+          if (!res.ok) {
+            alert("删除失败，请稍后重试");
+            return;
+          }
+          const data = await res.json();
+          if (!data || !data.ok) {
+            alert((data && data.error) || "删除失败");
+            return;
+          }
+        } catch (_) {
+          alert("删除失败，请检查网络后重试");
+          return;
+        }
+      }
+      removeConvLocally(id);
+    }
+
+    function ensureProgress(taskId, question, convId) {
+      if (convId && convId !== store.activeId) return null;
+      let row = pending.get(taskId);
+      if (row) return row;
+      const el = document.createElement("div");
+      el.className = "task-progress";
+      el.dataset.taskId = taskId;
+      const q = document.createElement("div");
+      q.className = "q";
+      q.textContent = question || "处理中…";
+      const label = document.createElement("div");
+      label.className = "label";
+      label.textContent = "已发送…";
+      const track = document.createElement("div");
+      track.className = "track";
+      const fill = document.createElement("div");
+      fill.className = "fill";
+      fill.style.width = "2%";
+      track.appendChild(fill);
+      el.appendChild(q);
+      el.appendChild(label);
+      el.appendChild(track);
+      logEl.appendChild(el);
+      scrollBottom();
+      row = { el, fill, label, q };
+      pending.set(taskId, row);
+      return row;
+    }
+
+    function updateProgress(taskId, pct, labelText, question, convId) {
+      if (convId) {
+        pendingMeta.set(convId, {
+          taskId,
+          question: question || "",
+          pct: Number(pct) || 0,
+          label: labelText || "",
+        });
+      }
+      const row = ensureProgress(taskId, question, convId);
+      if (!row) return;
+      if (question && row.q) row.q.textContent = question;
+      const p = Math.max(0, Math.min(100, Number(pct) || 0));
+      row.fill.style.width = p + "%";
+      row.label.textContent = labelText || ("处理中… " + p + "%");
+    }
+
+    function removeProgress(taskId, convId) {
+      const row = pending.get(taskId);
+      if (row) {
+        row.el.remove();
+        pending.delete(taskId);
+      }
+      if (convId) pendingMeta.delete(convId);
+    }
+
+    function markGenerating(convId, on) {
+      if (on) generating.add(convId);
+      else generating.delete(convId);
+      renderConvList();
+      syncSendBtn();
+      if (convId === store.activeId) renderCorpusBar();
+    }
+
+    function autosize() {
+      qEl.style.height = "auto";
+      qEl.style.height = Math.min(qEl.scrollHeight, 120) + "px";
+    }
+
+    function resolveConvId(msg) {
+      return msg.conversation_id || taskConv.get(msg.task_id) || store.activeId;
+    }
+
+    function connect() {
+      const proto = location.protocol === "https:" ? "wss" : "ws";
+      ws = new WebSocket(proto + "://" + location.host + "/ws");
+      ws.onopen = () => {
+        wsOpen = true;
+        setConn("已连接", "ok");
+        syncSendBtn();
+      };
+      ws.onclose = () => {
+        wsOpen = false;
+        setConn("重连中…", "bad");
+        syncSendBtn();
+        setTimeout(connect, 3000);
+      };
+      ws.onerror = () => { setConn("连接出错", "bad"); };
+      ws.onmessage = (ev) => {
+        let msg;
+        try { msg = JSON.parse(ev.data); } catch (_) { return; }
+        if (msg.type === "hello") return;
+        if (msg.type === "error") {
+          const cid = resolveConvId(msg);
+          if (msg.task_id) removeProgress(msg.task_id, cid);
+          if (cid) markGenerating(cid, false);
+          pushToConv(cid || store.activeId, "status", msg.message || "错误");
+          return;
+        }
+        if (msg.type === "ack") {
+          const cid = msg.conversation_id || store.activeId;
+          if (msg.task_id) taskConv.set(msg.task_id, cid);
+          updateProgress(msg.task_id, 2, "等待受理…", msg.question || "", cid);
+          return;
+        }
+        if (msg.type !== "reply") return;
+        const st = msg.status;
+        const tid = msg.task_id;
+        const cid = resolveConvId(msg);
+        if (tid && cid) taskConv.set(tid, cid);
+        const extra = msg.extra || {};
+        const echo = msg.echo_question || "";
+
+        if (st === "accepted") {
+          updateProgress(tid, 4, "已受理，处理中…", echo, cid);
+          if (msg.content) pushToConv(cid, "bot", msg.content);
+          return;
+        }
+        if (st === "progress") {
+          const pct = extra.pct != null ? extra.pct : 10;
+          updateProgress(tid, pct, msg.content || "处理中…", echo, cid);
+          return;
+        }
+        if (st === "busy" || st === "rate_limited") {
+          removeProgress(tid, cid);
+          markGenerating(cid, false);
+          taskConv.delete(tid);
+          pushToConv(
+            cid,
+            "bot",
+            msg.content || (st === "busy" ? "当前忙，请稍后再试" : "请求过于频繁")
+          );
+          return;
+        }
+        if (st === "completed") {
+          updateProgress(tid, 100, "完成", echo, cid);
+          removeProgress(tid, cid);
+          markGenerating(cid, false);
+          taskConv.delete(tid);
+          if (msg.content) pushToConv(cid, "bot", msg.content);
+        }
+      };
+    }
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (!wsOpen || !ws || ws.readyState !== WebSocket.OPEN) return;
+      const conv = activeConv();
+      if (!conv) return;
+      if (generating.has(conv.id)) return;
+      const question = qEl.value.trim();
+      if (!question) return;
+      markGenerating(conv.id, true);
+      pushToConv(conv.id, "user", question);
+      qEl.value = "";
+      autosize();
+      const corpus = ensureConvCorpus(conv);
+      ws.send(
+        JSON.stringify({
+          type: "ask",
+          question,
+          device_id: deviceId,
+          conversation_id: conv.id,
+          corpus,
+        })
+      );
+    });
+
+    qEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        form.requestSubmit();
+      }
+    });
+    qEl.addEventListener("input", autosize);
+
+    btnAddTag.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (btnAddTag.disabled) return;
+      setPickerOpen(!modPicker.classList.contains("open"));
+    });
+    statusRow.addEventListener("click", (e) => {
+      const btn = e.target.closest(".status-btn");
+      if (!btn || btn.disabled) return;
+      setStatus(btn.getAttribute("data-status"));
+    });
+    modFilter.addEventListener("input", renderModOptions);
+    document.addEventListener("click", (e) => {
+      if (!modPicker.classList.contains("open")) return;
+      const wrap = btnAddTag.closest(".add-wrap");
+      if (wrap && wrap.contains(e.target)) return;
+      setPickerOpen(false);
+    });
+
+    document.getElementById("btn-menu").addEventListener("click", () => setDrawer(true));
+    document.getElementById("btn-close-drawer").addEventListener("click", () => setDrawer(false));
+    document.getElementById("btn-new").addEventListener("click", createConv);
+    scrim.addEventListener("click", () => setDrawer(false));
+
+    ensureDeviceId();
+    loadStore();
+    renderHistory();
+    renderConvList();
+    renderCorpusBar();
+    autosize();
+    syncSendBtn();
+    connect();
+    fetchModsCatalog();
+    fetchServerHistory();
+  </script>
+</body>
+</html>

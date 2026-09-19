@@ -1,0 +1,56 @@
+# HOI4 国策总览+出图：公网 TCP 1939
+# 构建：docker compose -f deploy/docker-compose.yml build focus1939
+# 启动：docker compose -f deploy/docker-compose.yml up -d focus1939
+# 与其它服务互不依赖；语料与 derived 卷挂载。
+
+FROM python:3.12-slim-bookworm
+
+RUN set -eux; \
+    if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
+      sed -i 's|deb.debian.org|mirrors.cloud.tencent.com|g; s|security.debian.org|mirrors.cloud.tencent.com|g' \
+        /etc/apt/sources.list.d/debian.sources; \
+    fi; \
+    if [ -f /etc/apt/sources.list ]; then \
+      sed -i 's|deb.debian.org|mirrors.cloud.tencent.com|g; s|security.debian.org|mirrors.cloud.tencent.com|g' \
+        /etc/apt/sources.list; \
+    fi; \
+    apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        fonts-noto-cjk \
+        tini \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY service/1939/requirements.txt /tmp/focus1939-requirements.txt
+RUN pip install --no-cache-dir \
+      -i https://mirrors.cloud.tencent.com/pypi/simple \
+      --trusted-host mirrors.cloud.tencent.com \
+      -r /tmp/focus1939-requirements.txt \
+    && rm /tmp/focus1939-requirements.txt
+
+COPY service/1939 /app/service/1939
+COPY tool/focus_topology /app/tool/focus_topology
+COPY tool/hoi4_mod_start /app/tool/hoi4_mod_start
+COPY tool/hoi4treesnap/layout_png.py /app/tool/hoi4treesnap/layout_png.py
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app/service/1939:/app/tool:/app/tool/hoi4treesnap \
+    FOCUS_HOST=0.0.0.0 \
+    FOCUS_PORT=1939 \
+    FOCUS_GAME_ROOT=/data/vanilla \
+    FOCUS_MODS_ROOT=/data/mods \
+    FOCUS_MODS_CATALOG=/data/mods_catalog.json \
+    FOCUS_DERIVED=/data/derived_png \
+    FOCUS_DERIVED_FOCUS=/data/derived_focus \
+    FOCUS_MOD_START=/data/derived_hoi4/mod_start.json \
+    FOCUS_STEAM_GAME=/data/vanilla
+
+WORKDIR /app/service/1939
+
+EXPOSE 1939
+
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["python3", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "1939"]

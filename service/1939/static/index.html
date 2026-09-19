@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>国策树总览 · 1939</title>
+  <style>
+    :root {
+      --ink: #1c2418;
+      --muted: #5a6654;
+      --line: #c5cbb8;
+      --panel: #fcfaf4;
+      --accent: #2f5d3a;
+      --chip: #e8efe0;
+      --shout: #b42318;
+      --shout-bg: #fff1e8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Noto Sans SC", "IBM Plex Sans", sans-serif;
+      background:
+        radial-gradient(ellipse at top left, #e4edd8 0%, transparent 50%),
+        linear-gradient(180deg, #f3f0e8 0%, #e8e4d8 100%);
+      color: var(--ink);
+      min-height: 100vh;
+    }
+    header {
+      padding: 1.25rem 1.5rem 0.75rem;
+      border-bottom: 1px solid var(--line);
+    }
+    header h1 { margin: 0; font-size: 1.35rem; font-weight: 650; }
+    header p { margin: 0.35rem 0 0; color: var(--muted); font-size: 0.9rem; }
+    .callouts {
+      padding: 0.85rem 1.5rem 0.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+    }
+    .callout {
+      margin: 0;
+      padding: 0.7rem 1rem;
+      background: var(--shout-bg);
+      border: 2px solid var(--shout);
+      border-radius: 6px;
+      color: var(--shout);
+      font-size: 1.25rem;
+      font-weight: 750;
+      line-height: 1.45;
+      letter-spacing: 0.01em;
+    }
+    .callout em {
+      font-style: normal;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: end;
+      padding: 1rem 1.5rem;
+    }
+    label {
+      display: flex; flex-direction: column; gap: 0.25rem;
+      font-size: 0.75rem; color: var(--muted);
+      letter-spacing: 0.04em;
+    }
+    select, button {
+      font: inherit; padding: 0.45rem 0.7rem;
+      border: 1px solid var(--line); border-radius: 4px;
+      background: var(--panel); color: var(--ink);
+      min-width: 14rem;
+    }
+    .mod-picker {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      min-width: min(100%, 28rem);
+      max-width: 36rem;
+    }
+    .mod-picker input[type="search"] {
+      font: inherit;
+      padding: 0.45rem 0.7rem;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: var(--panel);
+      color: var(--ink);
+    }
+    .mod-picker .mod-list {
+      list-style: none;
+      margin: 0;
+      padding: 0.25rem;
+      max-height: 16rem;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: var(--panel);
+    }
+    .mod-picker .mod-list li {
+      margin: 0;
+    }
+    .mod-picker .mod-list button {
+      display: block;
+      width: 100%;
+      text-align: left;
+      min-width: 0;
+      background: transparent;
+      color: var(--ink);
+      border: none;
+      border-radius: 3px;
+      font-weight: 500;
+      padding: 0.4rem 0.55rem;
+    }
+    .mod-picker .mod-list button:hover,
+    .mod-picker .mod-list button:focus-visible {
+      background: var(--chip);
+      outline: none;
+    }
+    .mod-picker .mod-list button.active {
+      background: var(--accent);
+      color: #f5faf4;
+    }
+    .mod-picker .mod-meta {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+    button {
+      background: var(--accent); color: #f5faf4;
+      border-color: var(--accent); cursor: pointer; font-weight: 600;
+      min-width: auto;
+    }
+    button:disabled { opacity: 0.5; cursor: wait; }
+    #status {
+      padding: 0 1.5rem 0.75rem; color: var(--muted);
+      font-size: 0.9rem; min-height: 1.4em;
+    }
+    #status.error { color: #8b1e1e; }
+    main {
+      padding: 0 1.5rem 3rem;
+      max-width: 72rem;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+    main:has(#preview:not(.idle)) {
+      max-width: none;
+    }
+    .stats {
+      display: flex; flex-wrap: wrap; gap: 0.6rem;
+    }
+    .stat {
+      background: var(--chip);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 0.45rem 0.75rem;
+      font-size: 0.9rem;
+    }
+    .stat strong { font-variant-numeric: tabular-nums; }
+    .catalog {
+      display: flex; flex-direction: column; gap: 1rem;
+    }
+    section.block {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    section.block > h2 {
+      margin: 0; padding: 0.75rem 1rem; font-size: 1.05rem;
+      border-bottom: 1px solid var(--line); background: #eef3e6;
+    }
+    section.block > .hint {
+      margin: 0; padding: 0.45rem 1rem; font-size: 0.8rem;
+      color: var(--muted); border-bottom: 1px solid var(--line);
+    }
+    .empty { padding: 1rem; color: var(--muted); }
+    details.row {
+      border-bottom: 1px solid var(--line);
+    }
+    details.row:last-child { border-bottom: none; }
+    details.row > summary {
+      list-style: none;
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.55rem 1rem;
+      cursor: pointer;
+      user-select: none;
+    }
+    details.row > summary::-webkit-details-marker { display: none; }
+    details.row > summary::before {
+      content: "▸";
+      color: var(--muted);
+      width: 0.9rem;
+      flex-shrink: 0;
+    }
+    details.row[open] > summary::before { content: "▾"; }
+    details.row > summary:hover { background: #f5f3ea; }
+    .tag {
+      font-weight: 650;
+      flex: 1;
+      min-width: 0;
+      overflow-wrap: break-word;
+    }
+    .count {
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    ul.trees {
+      margin: 0; padding: 0.25rem 0.5rem 0.65rem 2rem;
+      list-style: none;
+    }
+    ul.trees li { margin: 0.15rem 0; }
+    ul.trees button.tree-btn {
+      display: block; width: 100%;
+      text-align: left;
+      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      font-size: 0.84rem; font-weight: 500;
+      padding: 0.4rem 0.55rem;
+      background: transparent; color: var(--ink);
+      border: 1px solid transparent; border-radius: 4px;
+      min-width: 0;
+    }
+    ul.trees .node-count {
+      display: inline-block;
+      min-width: 4.2em;
+      margin-right: 0.55rem;
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+    }
+    ul.trees button.tree-btn:hover {
+      background: var(--chip); border-color: var(--line);
+    }
+    ul.trees button.tree-btn.active {
+      background: #dce8d2; border-color: var(--accent); font-weight: 650;
+    }
+    ul.trees button.tree-btn:disabled { opacity: 0.55; cursor: wait; }
+    .meta-line {
+      display: block; margin-top: 0.15rem;
+      font-family: inherit; font-size: 0.75rem;
+      color: var(--muted); font-weight: 400;
+    }
+    #preview {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      overflow: hidden;
+      min-height: 12rem;
+    }
+    #preview.idle .preview-body { display: none; }
+    #preview .head {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 0.75rem; padding: 0.65rem 1rem;
+      border-bottom: 1px solid var(--line); background: #eef3e6;
+    }
+    #preview .head h2 {
+      margin: 0; font-size: 1.05rem; flex: 1; min-width: 0;
+      overflow-wrap: anywhere;
+    }
+    #preview .head-actions {
+      display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center;
+      flex-shrink: 0;
+    }
+    #preview .head a.dl,
+    #preview .head-actions button,
+    .panel-card .head-actions a.dl,
+    .panel-card .head-actions button {
+      flex-shrink: 0;
+      font: inherit; font-size: 0.8rem; font-weight: 600;
+      padding: 0.3rem 0.6rem;
+      border: 1px solid var(--accent); border-radius: 4px;
+      background: var(--accent); color: #f5faf4;
+      text-decoration: none; cursor: pointer; min-width: auto;
+    }
+    #preview .head-actions button.secondary,
+    .panel-card .head-actions button.secondary {
+      background: var(--panel); color: var(--accent);
+    }
+    #preview .head a.dl[hidden] { display: none; }
+    #preview .head a.dl:hover,
+    #preview .head-actions button:hover,
+    .panel-card .head-actions a.dl:hover,
+    .panel-card .head-actions button:hover { filter: brightness(1.08); }
+    #preview .pz-scale,
+    .panel-card .pz-scale {
+      font-variant-numeric: tabular-nums;
+      font-size: 0.8rem; color: var(--muted); min-width: 3.2em;
+      text-align: right;
+    }
+    #preview-msg {
+      margin: 0; padding: 0.5rem 1rem; font-size: 0.85rem;
+      color: var(--muted); border-bottom: 1px solid var(--line);
+    }
+    #preview-msg.error { color: #8b1e1e; }
+    #preview-msg:empty { display: none; }
+    .preview-body {
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+      padding: 0.75rem;
+      background: #e8ebe3;
+    }
+    .panel-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .panel-card > .head {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 0.75rem; padding: 0.55rem 0.85rem;
+      border-bottom: 1px solid var(--line); background: #f3f6ee;
+    }
+    .panel-card > .head h3 {
+      margin: 0; font-size: 0.95rem; flex: 1; min-width: 0;
+      overflow-wrap: anywhere; font-weight: 650;
+    }
+    .panel-card .meta {
+      margin: 0; padding: 0.35rem 0.85rem; font-size: 0.78rem;
+      color: var(--muted); border-bottom: 1px solid var(--line);
+    }
+    .pz-root { display: block; }
+    .pz-viewport {
+      position: relative;
+      height: min(56vh, 640px);
+      background: #1c242a;
+      overflow: hidden;
+      touch-action: none;
+      cursor: grab;
+      user-select: none;
+    }
+    .pz-viewport.dragging { cursor: grabbing; }
+    .pz-stage {
+      position: absolute;
+      left: 0; top: 0;
+      transform-origin: 0 0;
+      will-change: transform;
+    }
+    .pz-stage img {
+      display: block;
+      max-width: none;
+      height: auto;
+      padding: 0;
+      pointer-events: none;
+      -webkit-user-drag: none;
+    }
+    #preview.idle #preview-placeholder {
+      display: block; padding: 2rem 1.25rem; color: var(--muted);
+      font-size: 0.95rem;
+    }
+    #preview:not(.idle) #preview-placeholder { display: none; }
+    #boot-hint {
+      padding: 1.5rem;
+      color: var(--muted);
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>国策树总览 · 1939</h1>
+    <p>选定模组后点「解析」加载列表；点击国策树后在下方交互查看（拖拽平移、滚轮缩放）。语料同 1936。</p>
+  </header>
+  <div class="callouts" aria-label="操作提示">
+    <p class="callout">更换模组后，必须点击 <em>「解析」</em> 按钮，才会显示新的模组国策列表。</p>
+    <p class="callout">展开列表后，点击国策树卡片；下方按连通分量分图（≤10 国策的小分量合并），可拖拽缩放；也可下载整图。</p>
+  </div>
+  <script src="/static/focus_panzoom.js"></script>
+  <div class="controls">
+    <label>模组
+      <div class="mod-picker">
+        <input type="search" id="mod-filter" placeholder="筛选模组…" autocomplete="off" />
+        <ul class="mod-list" id="mod-list" role="listbox" aria-label="模组列表"></ul>
+        <div class="mod-meta" id="mod-meta">加载模组列表…</div>
+      </div>
+    </label>
+    <button id="go" type="button">解析</button>
+  </div>
+  <div id="status"></div>
+  <main id="out"><p id="boot-hint">请选择模组后点击「解析」以加载国策列表。</p></main>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const modListEl = document.getElementById("mod-list");
+    const modFilterEl = document.getElementById("mod-filter");
+    const modMetaEl = document.getElementById("mod-meta");
+    const statusEl = document.getElementById("status");
+    const outEl = document.getElementById("out");
+    const goBtn = document.getElementById("go");
+
+    /** @type {{id:string,short:string,name:string,label:string,start_year?:number|null}[]} */
+    let modsCatalog = [];
+    let currentMod = "vanilla";
+    let activeBtn = null;
+    /** @type {InstanceType<typeof FocusPanZoom>|null} */
+    let panZoom = null;
+    /** @type {InstanceType<typeof FocusPanZoom>[]} */
+    let panelZooms = [];
+
+    function setStatus(text, isError = false) {
+      statusEl.textContent = text || "";
+      statusEl.classList.toggle("error", !!isError);
+    }
+
+    function esc(s) {
+      return String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function downloadUrl(imageUrl) {
+      try {
+        const u = new URL(imageUrl, location.origin);
+        u.searchParams.set("download", "1");
+        return u.pathname + u.search;
+      } catch (_) {
+        const base = String(imageUrl || "").split("#")[0];
+        return `${base}${base.includes("?") ? "&" : "?"}download=1`;
+      }
+    }
+
+    function modKey(m) {
+      return String(m.short || m.id || "").trim();
+    }
+
+    function selectMod(key) {
+      const hit = modsCatalog.find(
+        (m) => modKey(m).toLowerCase() === String(key || "").toLowerCase()
+      );
+      currentMod = hit ? modKey(hit) : key || "vanilla";
+      renderModList();
+    }
+
+    function renderModList() {
+      const q = (modFilterEl.value || "").trim().toLowerCase();
+      const pool = !q
+        ? modsCatalog
+        : modsCatalog.filter((m) => {
+            const hay = [m.id, m.short, m.name, m.label, String(m.start_year ?? "")]
+              .join(" ")
+              .toLowerCase();
+            return hay.includes(q);
+          });
+      modListEl.innerHTML = "";
+      for (const m of pool) {
+        const key = modKey(m);
+        const li = document.createElement("li");
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.setAttribute("role", "option");
+        btn.textContent = m.label || m.name || key;
+        btn.title = `${key} · id=${m.id}`;
+        btn.dataset.mod = key;
+        if (key.toLowerCase() === currentMod.toLowerCase()) {
+          btn.classList.add("active");
+          btn.setAttribute("aria-selected", "true");
+        }
+        btn.addEventListener("click", () => {
+          currentMod = key;
+          renderModList();
+        });
+        li.appendChild(btn);
+        modListEl.appendChild(li);
+      }
+      const total = modsCatalog.length;
+      const shown = pool.length;
+      const cur = modsCatalog.find(
+        (m) => modKey(m).toLowerCase() === currentMod.toLowerCase()
+      );
+      modMetaEl.textContent = cur
+        ? `已选 ${cur.label || cur.name} · 显示 ${shown}/${total}`
+        : `显示 ${shown}/${total}`;
+    }
+
+    async function loadMods() {
+      modMetaEl.textContent = "加载模组列表…";
+      const res = await fetch("/api/mods");
+      const data = await res.json();
+      if (!data.ok) throw new Error("无法加载模组列表");
+      modsCatalog = data.mods || [];
+      if (!modsCatalog.length) {
+        modMetaEl.textContent = "没有可用模组";
+        throw new Error("模组列表为空");
+      }
+      const want = params.get("mod") || "vanilla";
+      const hit = modsCatalog.find(
+        (m) =>
+          modKey(m).toLowerCase() === want.toLowerCase() ||
+          String(m.id).toLowerCase() === want.toLowerCase()
+      );
+      currentMod = hit ? modKey(hit) : modKey(modsCatalog[0]);
+      renderModList();
+      setStatus(`已加载 ${modsCatalog.length} 个模组（vanilla 置顶，其余按开局年）`);
+    }
+
+    function treeListHtml(items, fallbackTag) {
+      if (!items.length) return `<div class="empty">（无）</div>`;
+      const lis = items.map((t) => {
+        const id = t.id || t;
+        const tag = t.tag || fallbackTag || "_";
+        const n = t.nodes != null && t.nodes !== "" ? t.nodes : t.local_focus_count;
+        const nodes =
+          n != null && n !== ""
+            ? `<span class="node-count">${esc(n)} 节点</span>`
+            : `<span class="node-count">? 节点</span>`;
+        const path = t.path
+          ? `<span class="meta-line">${esc(t.path)}${t.start_line ? ":" + esc(t.start_line) : ""}</span>`
+          : "";
+        return `<li>
+          <button type="button" class="tree-btn"
+            data-tag="${esc(tag)}" data-tree="${esc(id)}">
+            ${nodes}${esc(id)}${path}
+          </button>
+        </li>`;
+      }).join("");
+      return `<ul class="trees">${lis}</ul>`;
+    }
+
+    function renderCatalog(data) {
+      const st = data.stats || {};
+      const tags = data.exclusive_tags || [];
+      const non = data.non_exclusive || { count: 0, trees: [] };
+
+      const stats = `<div class="stats">
+        <div class="stat">国策树合计 <strong>${esc(st.total_trees)}</strong></div>
+        <div class="stat">专属树 <strong>${esc(st.exclusive_trees)}</strong></div>
+        <div class="stat">有专属树的 TAG <strong>${esc(st.tags_with_exclusive)}</strong></div>
+        <div class="stat">非专属树 <strong>${esc(st.non_exclusive_trees)}</strong></div>
+      </div>`;
+
+      let exclusive = `<section class="block">
+        <h2>专属国策树（按 TAG）</h2>
+        <p class="hint">默认收起，只显示数量；展开后点击国策树卡片，在下方出图。</p>`;
+      if (!tags.length) {
+        exclusive += `<div class="empty">（无）</div>`;
+      } else {
+        for (const row of tags) {
+          const details = (row.tree_details && row.tree_details.length)
+            ? row.tree_details.map((t) => ({ ...t, tag: row.tag }))
+            : (row.trees || []).map((id) => ({ id, tag: row.tag }));
+          exclusive += `<details class="row">
+            <summary>
+              <span class="tag">${esc(row.label || row.tag)}</span>
+              <span class="count">${esc(row.tree_count)}</span>
+            </summary>
+            ${treeListHtml(details, row.tag)}
+          </details>`;
+        }
+      }
+      exclusive += `</section>`;
+
+      const nonItems = (non.trees || []).map((t) => ({
+        ...t,
+        tag: (t.tags && t.tags[0]) || "_",
+      }));
+      let nonEx = `<section class="block">
+        <h2>非专属国策树</h2>
+        <p class="hint">通用 / 多 TAG 共用 / 无法唯一归属。</p>
+        <details class="row">
+          <summary>
+            <span class="tag">非专属</span>
+            <span class="count">${esc(non.count)}</span>
+          </summary>
+          ${treeListHtml(nonItems, "_")}
+        </details>
+      </section>`;
+
+      const preview = `<section id="preview" class="idle">
+        <div class="head">
+          <h2 id="preview-title">出图预览（下方）</h2>
+          <div class="head-actions">
+            <a id="preview-dl-full" class="dl" hidden href="#">下载整图</a>
+          </div>
+        </div>
+        <p id="preview-msg"></p>
+        <div id="preview-placeholder">展开上方列表，点击一棵国策树卡片；下方按连通分量分图查看。</div>
+        <div class="preview-body" id="preview-panels"></div>
+      </section>`;
+
+      outEl.innerHTML =
+        stats +
+        `<div class="catalog">${exclusive}${nonEx}</div>` +
+        preview;
+
+      outEl.querySelectorAll("button.tree-btn").forEach((btn) => {
+        btn.addEventListener("click", () => renderTree(btn));
+      });
+    }
+
+    function setPreviewMessage(text, isError = false) {
+      const el = document.getElementById("preview-msg");
+      if (!el) return;
+      el.textContent = text || "";
+      el.classList.toggle("error", !!isError);
+    }
+
+    function clearPanels() {
+      panelZooms = [];
+      const host = document.getElementById("preview-panels");
+      if (host) host.innerHTML = "";
+    }
+
+    function mountPanel(host, panel, bust) {
+      const card = document.createElement("article");
+      card.className = "panel-card";
+      const head = document.createElement("div");
+      head.className = "head";
+      const h3 = document.createElement("h3");
+      h3.textContent = panel.label || panel.panel_id || "分量";
+      const actions = document.createElement("div");
+      actions.className = "head-actions";
+      actions.innerHTML =
+        `<span class="pz-scale" aria-live="polite"></span>` +
+        `<button type="button" class="secondary pz-zoom-out" title="缩小">−</button>` +
+        `<button type="button" class="secondary pz-zoom-in" title="放大">+</button>` +
+        `<button type="button" class="secondary pz-fit-height" title="按高度铺满">铺高</button>` +
+        `<button type="button" class="secondary pz-fit" title="整图适应">适应</button>`;
+      const dl = document.createElement("a");
+      dl.className = "dl";
+      const fname = panel.image || `${panel.panel_id || "panel"}.png`;
+      dl.href = downloadUrl(panel.image_url);
+      dl.download = fname;
+      dl.textContent = "下载";
+      actions.appendChild(dl);
+      head.append(h3, actions);
+      const meta = document.createElement("p");
+      meta.className = "meta";
+      const st = panel.stats || {};
+      const kind =
+        panel.kind === "small_pool"
+          ? `小组件×${panel.component_count ?? "?"}`
+          : "连通分量";
+      meta.textContent =
+        `${kind} · 节点 ${panel.node_count ?? st.nodes ?? "?"} · ` +
+        `前置 ${st.prereq_edges ?? "?"} · 互斥 ${st.mex_edges ?? "?"}`;
+      const viewport = document.createElement("div");
+      viewport.className = "pz-viewport";
+      viewport.tabIndex = 0;
+      viewport.setAttribute("aria-label", h3.textContent);
+      const stage = document.createElement("div");
+      stage.className = "pz-stage";
+      const img = document.createElement("img");
+      img.alt = h3.textContent;
+      stage.appendChild(img);
+      viewport.appendChild(stage);
+      card.append(head, meta, viewport);
+      host.appendChild(card);
+      const pz = new window.FocusPanZoom(card);
+      panelZooms.push(pz);
+      return pz.load(`${panel.image_url}?t=${bust}`, h3.textContent);
+    }
+
+    async function renderTree(btn) {
+      const tag = btn.dataset.tag || "_";
+      const treeId = btn.dataset.tree;
+      if (!treeId) return;
+
+      const preview = document.getElementById("preview");
+      const title = document.getElementById("preview-title");
+      const dlFull = document.getElementById("preview-dl-full");
+      const panelsHost = document.getElementById("preview-panels");
+      if (!preview || !title || !dlFull || !panelsHost || !window.FocusPanZoom) return;
+
+      if (activeBtn) activeBtn.classList.remove("active");
+      activeBtn = btn;
+      btn.classList.add("active");
+
+      preview.classList.remove("idle");
+      title.textContent = treeId;
+      dlFull.hidden = true;
+      dlFull.removeAttribute("href");
+      dlFull.removeAttribute("download");
+      clearPanels();
+      setPreviewMessage("渲染中…");
+      btn.disabled = true;
+      preview.scrollIntoView({ behavior: "smooth", block: "start" });
+
+      const q = new URLSearchParams({
+        mod: currentMod,
+        tag,
+        tree_id: treeId,
+        lang: "simp_chinese",
+      });
+
+      try {
+        const res = await fetch(`/api/focus-trees?${q.toString()}`);
+        const data = await res.json();
+        if (!data.ok) {
+          setPreviewMessage(
+            `失败：${data.error || res.status} ${data.detail || data.hint || ""}`,
+            true
+          );
+          return;
+        }
+        const tree = (data.trees || [])[0];
+        if (!tree || !tree.image_url) {
+          setPreviewMessage("未返回图片", true);
+          return;
+        }
+        const fname = tree.image || `${treeId}.png`;
+        const st = tree.stats || {};
+        const comp = tree.components || {};
+        const panels = tree.panels && tree.panels.length
+          ? tree.panels
+          : [{
+              panel_id: "full",
+              kind: "component",
+              label: treeId,
+              node_count: st.nodes,
+              component_count: 1,
+              stats: st,
+              image: tree.image,
+              image_url: tree.image_url,
+            }];
+        setPreviewMessage(
+          `节点 ${st.nodes ?? "?"} · 连通分量 ${comp.components ?? panels.length}` +
+          `（大 ${comp.large ?? "?"} / 小≤${comp.small_limit ?? 10} 合并 ${comp.small ?? "?"}）` +
+          ` · 分图 ${panels.length} · 整图分离布局仅在下载时计算`
+        );
+        dlFull.href = downloadUrl(tree.image_url);
+        dlFull.download = fname;
+        dlFull.hidden = false;
+        const bust = Date.now();
+        await Promise.all(panels.map((p) => mountPanel(panelsHost, p, bust)));
+      } catch (err) {
+        setPreviewMessage(`请求失败：${err}`, true);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function run() {
+      const mod = currentMod.trim() || "vanilla";
+      currentMod = mod;
+      history.replaceState(null, "", `?mod=${encodeURIComponent(mod)}`);
+      goBtn.disabled = true;
+      setStatus("解析国策树…");
+      outEl.innerHTML = "";
+      activeBtn = null;
+      panZoom = null;
+      panelZooms = [];
+      try {
+        const res = await fetch(`/api/focus-catalog?mod=${encodeURIComponent(mod)}`);
+        const data = await res.json();
+        if (!data.ok) {
+          setStatus(data.detail || data.error || "解析失败", true);
+          return;
+        }
+        const name =
+          (data.mod && (data.mod.name || data.mod.short)) ||
+          (modsCatalog.find((m) => modKey(m) === mod) || {}).label ||
+          mod;
+        setStatus(
+          `${name} · ${data.stats.total_trees} 棵树 · ` +
+          `${data.stats.tags_with_exclusive} 个 TAG 有专属树 · ` +
+          `${data.stats.non_exclusive_trees} 棵非专属`
+        );
+        renderCatalog(data);
+      } catch (e) {
+        setStatus(String(e.message || e), true);
+      } finally {
+        goBtn.disabled = false;
+      }
+    }
+
+    goBtn.addEventListener("click", run);
+    modFilterEl.addEventListener("input", () => renderModList());
+    loadMods().catch((e) => setStatus(String(e.message || e), true));
+  </script>
+</body>
+</html>

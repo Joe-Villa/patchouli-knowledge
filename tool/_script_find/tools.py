@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import json
+import os
 import re
+import shutil
 import sqlite3
+import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Iterator
 
 from localization_bridge import (
     connect as loc_connect,
@@ -30,6 +33,11 @@ DEFAULT_ALIASES = DEFAULT_DATA / "query_aliases.json"
 _TEXT_PREVIEW = 3500
 _GREP_MAX_HITS = 40
 _GREP_LINE_MAX = 240
+# ripgrep 风格：按行流式扫，限制累计读盘（避免整文件 read_text 拖死小内存机）
+_GREP_MAX_FILES = 500
+_GREP_MAX_BYTES = 12 * 1024 * 1024  # 单次工具调用累计可读 ~12MiB
+_GREP_MAX_FILE_BYTES = 2 * 1024 * 1024  # 单文件最多读前 2MiB
+_GREP_RG_TIMEOUT_SEC = 20.0
 
 
 def _tool(name: str, description: str, parameters: dict) -> dict:
@@ -129,6 +137,88 @@ TOOL_SCHEMAS: list[dict] = [
         },
     ),
     _tool(
+        "focus_topology",
+        "HOI4：按 TAG 建出国策逻辑拓扑（点=国策，边=prerequisite，互斥叉=路线分支）。"
+        "HOI4 剧情/路线几乎都在国策树上：问内战、开战、变线、走哪条线时必须先用本工具（或 focus_derived），"
+        "再按需 read_block；不要先盲搜 events。"
+        "返回 summary_text（可直接作 computation 证据）以及每棵树的 roots/forks。",
+        {
+            "type": "object",
+            "properties": {
+                "tag": {
+                    "type": "string",
+                    "description": "三字母国家 tag，如 PRC / GER / SIA",
+                },
+                "tree_id": {
+                    "type": "string",
+                    "description": "可选：只看某一 focus_tree id，如 china_nationalist_focus",
+                },
+                "outline_depth": {
+                    "type": "integer",
+                    "default": 2,
+                    "description": "入口向下展开层数（默认 2）",
+                },
+            },
+            "required": ["tag"],
+        },
+    ),
+    _tool(
+        "focus_tree_catalog",
+        "HOI4：扫描当前语料全部 focus_tree，二分「专属（恰好一 TAG）」与「非专属」。"
+        "剧情入口总览：先弄清有哪些树再下钻。若已构建 database/derived/focus/<mod>/ 则优先读 derived（快）。"
+        "summary_text 可直接作 computation 证据。细看某 TAG 用 focus_topology；单树全图用 focus_derived。",
+        {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string",
+                    "description": "可选过滤：专属 / 非专属（或 exclusive / non_exclusive）",
+                },
+                "tag": {
+                    "type": "string",
+                    "description": "可选：只返回专属该 TAG 的树",
+                },
+                "live": {
+                    "type": "boolean",
+                    "default": False,
+                    "description": "true 则强制现扫 national_focus，忽略 derived",
+                },
+            },
+            "required": [],
+        },
+    ),
+    _tool(
+        "focus_derived",
+        "HOI4：读取预解析国策 derived（database/derived/focus）。剧情答题的主数据源之一。"
+        "action=list 看哪些模组已构建；catalog 读专属/非专属总览；"
+        "index 列树；tree 读单棵树完整 graph（节点名、prereq/mex、坐标）。"
+        "未构建时返回 hint：python ingest/focus_corpus/build_focus_corpus.py --mod <short>。"
+        "不要擅自全量解析所有模组。",
+        {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "enum": ["list", "catalog", "index", "tree"],
+                    "description": "list | catalog | index | tree",
+                },
+                "tree_id": {
+                    "type": "string",
+                    "description": "action=tree 时必填：focus_tree id",
+                },
+                "tag": {
+                    "type": "string",
+                    "description": "action=index 时可选：只列该 TAG 专属树",
+                },
+                "mod": {
+                    "type": "string",
+                    "description": "可选：模组 short/id；默认用当前语料 game_root 解析",
+                },
+            },
+            "required": ["action"],
+        },
+    ),
+    _tool(
         "read_block",
         "在已知 path 中按 key 切 Clausewitz 块，产出答用 span。depth=any 用于嵌套如 named_colors。"
         "path 相对 /game；整池模式也可用 mods/<workshop_id>/...。",
@@ -152,14 +242,19 @@ TOOL_SCHEMAS: list[dict] = [
     ),
     _tool(
         "grep_text",
-        "在文本树中搜索正则/子串（只读）。默认扫 /game；整池可用 glob=mods/<id>/**/*.txt。",
+        "在文本树中按行搜索（ripgrep 风格，只读）。必须带目录前缀的 glob；"
+        "禁止裸 **/*.txt。命中或读盘预算用尽即停。整池：mods/<id>/common/**/*.txt。",
         {
             "type": "object",
             "properties": {
                 "pattern": {"type": "string"},
                 "glob": {
                     "type": "string",
-                    "description": "可选，如 common/ideologies/*.txt 或 mods/<id>/common/**/*.txt",
+                    "description": (
+                        "必填倾向：带顶层目录，如 common/national_focus/*.txt、"
+                        "events/TNO_Burgundy*.txt、mods/<id>/common/decisions/**/*.txt。"
+                        "不要用 **/*.txt 或省略 glob。"
+                    ),
                 },
                 "max_hits": {"type": "integer", "default": 30},
                 "literal": {
@@ -294,6 +389,10 @@ TOOL_SCHEMAS: list[dict] = [
 ]
 
 
+# grep/read 默认可扫顶层（Vic3）；HOI4 等可在 ToolContext.scan_tops 覆盖
+DEFAULT_SCAN_TOPS: tuple[str, ...] = ("common", "events", "map_data")
+
+
 @dataclass
 class ToolContext:
     game_root: Path
@@ -303,6 +402,7 @@ class ToolContext:
     # pool：host 上 _mods_view（id→削减树）
     mods_root: Path | None = None
     visible_mod_ids: frozenset[str] = field(default_factory=frozenset)
+    scan_tops: tuple[str, ...] = DEFAULT_SCAN_TOPS
 
 
 def _normalize_rel_path(path: str) -> str:
@@ -364,6 +464,9 @@ def make_dispatcher(ctx: ToolContext) -> dict[str, Callable[[dict], Any]]:
         "loc_lookup": lambda a: tool_loc_lookup(a, ctx),
         "loc_to_entity": lambda a: tool_loc_to_entity(a, ctx),
         "registry_lookup": lambda a: tool_registry_lookup(a, ctx),
+        "focus_topology": lambda a: tool_focus_topology(a, ctx),
+        "focus_tree_catalog": lambda a: tool_focus_tree_catalog(a, ctx),
+        "focus_derived": lambda a: tool_focus_derived(a, ctx),
         "read_block": lambda a: tool_read_block(a, ctx),
         "read_lines": lambda a: tool_read_lines(a, ctx),
         "grep_text": lambda a: tool_grep_text(a, ctx),
@@ -539,6 +642,341 @@ def tool_loc_to_entity(args: dict, ctx: ToolContext) -> dict:
         conn.close()
 
 
+def tool_focus_tree_catalog(args: dict, ctx: ToolContext) -> dict:
+    """扫描语料全部国策树，二分专属 / 非专属；有 derived 则优先读。"""
+    import sys
+
+    tool_root = Path(__file__).resolve().parents[1]
+    if str(tool_root) not in sys.path:
+        sys.path.insert(0, str(tool_root))
+    from focus_topology import catalog_focus_trees  # noqa: WPS433
+    from focus_topology.derived import (  # noqa: WPS433
+        load_catalog_json,
+        resolve_derived_dir,
+    )
+
+    category = args.get("category")
+    tag = args.get("tag")
+    live = bool(args.get("live"))
+
+    if not live:
+        derived = resolve_derived_dir(game_root=ctx.game_root)
+        cached = load_catalog_json(derived) if derived else None
+        if cached and cached.get("ok"):
+            return _filter_derived_catalog(
+                cached, category=category, tag=tag, derived=str(derived)
+            )
+
+    result = catalog_focus_trees(
+        ctx.game_root,
+        category=str(category).strip() if category else None,
+        tag=str(tag).strip() if tag else None,
+    )
+    if result.get("ok"):
+        result = dict(result)
+        result["source"] = "live"
+    return result
+
+
+def _filter_derived_catalog(
+    cached: dict,
+    *,
+    category: object,
+    tag: object,
+    derived: str,
+) -> dict:
+    cat_filter = str(category or "").strip().lower()
+    tag_f = str(tag or "").strip()
+    exclusive_by_tag = dict(cached.get("exclusive_by_tag") or {})
+    non_exclusive = list(cached.get("non_exclusive") or [])
+
+    rows: list[dict] = []
+    for tag_k, trees in exclusive_by_tag.items():
+        for t in trees:
+            row = dict(t)
+            row.setdefault("category", "专属")
+            row.setdefault("tag", tag_k)
+            rows.append(row)
+    for t in non_exclusive:
+        row = dict(t)
+        row.setdefault("category", "非专属")
+        rows.append(row)
+
+    if cat_filter in ("专属", "exclusive", "excl"):
+        rows = [r for r in rows if r.get("category") == "专属"]
+    elif cat_filter in ("非专属", "non_exclusive", "non-exclusive", "nonexcl"):
+        rows = [r for r in rows if r.get("category") == "非专属"]
+
+    if tag_f:
+        tu = tag_f.upper()
+        rows = [
+            r
+            for r in rows
+            if r.get("category") == "专属" and str(r.get("tag") or "").upper() == tu
+        ]
+        exclusive_by_tag = {
+            k: v for k, v in exclusive_by_tag.items() if str(k).upper() == tu
+        }
+        non_exclusive = []
+    elif cat_filter in ("专属", "exclusive", "excl"):
+        non_exclusive = []
+    elif cat_filter in ("非专属", "non_exclusive", "non-exclusive", "nonexcl"):
+        exclusive_by_tag = {}
+
+    exclusive = [r for r in rows if r.get("category") == "专属"]
+    if cat_filter in ("非专属", "non_exclusive", "non-exclusive", "nonexcl"):
+        exclusive = []
+        exclusive_by_tag = {}
+    if cat_filter in ("专属", "exclusive", "excl"):
+        non_exclusive = []
+
+    # rebuild by_tag from filtered exclusive rows when tag filter applied
+    if tag_f or cat_filter:
+        from collections import defaultdict
+
+        by_tag: dict = defaultdict(list)
+        for r in exclusive:
+            by_tag[str(r.get("tag") or "")].append(r)
+        exclusive_by_tag = {k: v for k, v in sorted(by_tag.items()) if k}
+
+    summary = cached.get("summary_text") or cached.get("text") or ""
+    if cat_filter or tag_f:
+        summary = (
+            f"(derived filter category={category or '-'} tag={tag or '-'})\n" + summary
+        )
+
+    return {
+        "ok": True,
+        "source": "derived",
+        "derived": derived,
+        "stats": cached.get("stats"),
+        "exclusive_by_tag": exclusive_by_tag,
+        "non_exclusive": non_exclusive if not tag_f else [],
+        "trees": rows,
+        "summary_text": summary,
+        "text": summary,
+        "mod": cached.get("mod"),
+    }
+
+
+def tool_focus_derived(args: dict, ctx: ToolContext) -> dict:
+    """读 database/derived/focus 预解析国策。"""
+    import sys
+
+    tool_root = Path(__file__).resolve().parents[1]
+    repo = tool_root.parent
+    if str(tool_root) not in sys.path:
+        sys.path.insert(0, str(tool_root))
+    from focus_topology.derived import (  # noqa: WPS433
+        focus_derived_root,
+        list_trees_for_tag,
+        load_catalog_json,
+        load_index,
+        load_manifest,
+        load_registry,
+        load_tree_graph,
+        resolve_derived_dir,
+    )
+
+    action = str(args.get("action") or "").strip().lower()
+    mod = str(args.get("mod") or "").strip() or None
+
+    if action == "list":
+        reg = load_registry(repo)
+        mods = reg.get("mods") or {}
+        # de-dupe by dir
+        by_dir: dict[str, dict] = {}
+        for entry in mods.values():
+            if isinstance(entry, dict) and entry.get("dir"):
+                by_dir[str(entry["dir"])] = entry
+        return {
+            "ok": True,
+            "derived_root": str(focus_derived_root(repo)),
+            "mods": list(by_dir.values()),
+            "hint": (
+                "未列出的模组需先运行: "
+                "python ingest/focus_corpus/build_focus_corpus.py --mod <short>"
+            ),
+        }
+
+    derived = None
+    if mod:
+        derived = resolve_derived_dir(mod_short=mod, mod_id=mod, repo=repo)
+    if derived is None:
+        derived = resolve_derived_dir(game_root=ctx.game_root, repo=repo)
+    if derived is None:
+        return {
+            "ok": False,
+            "error": "derived_missing",
+            "hint": (
+                "当前语料尚无预解析国策。构建示例: "
+                "python ingest/focus_corpus/build_focus_corpus.py --mod TFR"
+            ),
+            "derived_root": str(focus_derived_root(repo)),
+            "game_root": str(ctx.game_root),
+            "mod": mod,
+        }
+
+    if action == "catalog":
+        data = load_catalog_json(derived)
+        if not data:
+            return {"ok": False, "error": "catalog_unreadable", "derived": str(derived)}
+        out = dict(data)
+        out["source"] = "derived"
+        out["derived"] = str(derived)
+        out["manifest"] = load_manifest(derived)
+        return out
+
+    if action == "index":
+        index = load_index(derived)
+        if not index:
+            return {"ok": False, "error": "index_unreadable", "derived": str(derived)}
+        tag = str(args.get("tag") or "").strip()
+        trees = dict(index.get("trees") or {})
+        if tag:
+            want = set(list_trees_for_tag(derived, tag))
+            trees = {k: v for k, v in trees.items() if k in want}
+        return {
+            "ok": True,
+            "source": "derived",
+            "derived": str(derived),
+            "mod": index.get("mod"),
+            "tree_count": len(trees),
+            "trees": trees,
+            "tag_filter": tag or None,
+        }
+
+    if action == "tree":
+        tree_id = str(args.get("tree_id") or "").strip()
+        if not tree_id:
+            return {"ok": False, "error": "tree_id_required"}
+        graph = load_tree_graph(derived, tree_id)
+        if not graph:
+            return {
+                "ok": False,
+                "error": "tree_not_found",
+                "tree_id": tree_id,
+                "derived": str(derived),
+            }
+        # slim for agent: keep structure, cap huge node dumps? keep full — agent needs coords
+        return {
+            "ok": True,
+            "source": "derived",
+            "derived": str(derived),
+            "tree": graph,
+        }
+
+    return {
+        "ok": False,
+        "error": "bad_action",
+        "hint": "action 须为 list | catalog | index | tree",
+    }
+
+
+def tool_focus_topology(args: dict, ctx: ToolContext) -> dict:
+    """按 TAG 建 HOI4 国策拓扑（树 / 入口 / 互斥分支）。"""
+    import sys
+
+    tool_root = Path(__file__).resolve().parents[1]
+    if str(tool_root) not in sys.path:
+        sys.path.insert(0, str(tool_root))
+    from focus_topology import focus_topology_for_tag  # noqa: WPS433
+
+    tag = str(args.get("tag") or "").strip()
+    tree_id = args.get("tree_id")
+    tree_id_s = str(tree_id).strip() if tree_id else None
+    try:
+        depth = int(args.get("outline_depth") or 2)
+    except (TypeError, ValueError):
+        depth = 2
+    depth = max(0, min(depth, 4))
+
+    result = focus_topology_for_tag(
+        ctx.game_root,
+        tag,
+        tree_id=tree_id_s or None,
+        outline_depth=depth,
+    )
+    if not result.get("ok"):
+        return result
+
+    # 为入口/分叉补 loc 名（便于直接答题）
+    name_ids: list[str] = []
+    for t in result.get("trees") or []:
+        name_ids.extend(t.get("local_roots") or [])
+        name_ids.extend(t.get("attached_shared_roots") or [])
+        for f in t.get("forks") or []:
+            name_ids.extend(f.get("choices") or [])
+            name_ids.extend(f.get("after") or [])
+    loc_names = _focus_loc_names(ctx, name_ids)
+
+    slim_trees = []
+    for t in result.get("trees") or []:
+        slim_trees.append(
+            {
+                "id": t.get("id"),
+                "path": t.get("path"),
+                "start_line": t.get("start_line"),
+                "gate": t.get("gate"),
+                "stats": t.get("stats"),
+                "local_roots": t.get("local_roots"),
+                "attached_shared_roots": t.get("attached_shared_roots"),
+                "forks": t.get("forks"),
+                "missing_shared": t.get("missing_shared"),
+            }
+        )
+
+    summary = str(result.get("summary_text") or "")
+    if loc_names:
+        loc_lines = ["  loc_names:"]
+        for kid, val in sorted(loc_names.items()):
+            loc_lines.append(f"    {kid} = {val}")
+        summary = summary + "\n" + "\n".join(loc_lines)
+
+    return {
+        "ok": True,
+        "tag": result.get("tag"),
+        "tree_id_filter": result.get("tree_id_filter"),
+        "matched_tree_count": result.get("matched_tree_count"),
+        "trees": slim_trees,
+        "loc_names": loc_names,
+        "summary_text": summary,
+        "text": summary,
+        "hint": (
+            "问「几条路线」看 route_forks / forks，不要把 attached_shared_focus 算作派系路线。"
+            "local_entry_focuses 才是本树本地入口。"
+            "可将 text/summary_text 作为 submit 的 computation 证据；"
+            "某国策效果再 read_block(path, key=focus_id, depth=any)。"
+        ),
+    }
+
+
+def _focus_loc_names(ctx: ToolContext, ids: list[str]) -> dict[str, str]:
+    """focus id → 简中名；缺库则空。"""
+    uniq = list(dict.fromkeys(i for i in ids if i))
+    if not uniq or not ctx.loc_db.is_file():
+        return {}
+    out: dict[str, str] = {}
+    try:
+        conn = sqlite3.connect(str(ctx.loc_db))
+        try:
+            for kid in uniq[:80]:
+                row = conn.execute(
+                    """
+                    SELECT value FROM localization
+                    WHERE key=? AND lang=? LIMIT 1
+                    """,
+                    (kid, ctx.lang),
+                ).fetchone()
+                if row and row[0]:
+                    out[kid] = str(row[0])
+        finally:
+            conn.close()
+    except sqlite3.Error:
+        return out
+    return out
+
+
 def tool_registry_lookup(args: dict, ctx: ToolContext) -> dict:
     kind = str(args.get("kind") or "").strip()
     key = str(args.get("key") or "").strip()
@@ -611,6 +1049,13 @@ def tool_registry_lookup(args: dict, ctx: ToolContext) -> dict:
 
     if kind == "map":
         db = ctx.game_root / "map_data_registry.sqlite"
+        if not db.is_file():
+            return {
+                "ok": True,
+                "hits": [],
+                "count": 0,
+                "note": "map_data_registry.sqlite missing (not built for this corpus)",
+            }
         conn = sqlite3.connect(str(db))
         conn.row_factory = sqlite3.Row
         try:
@@ -629,6 +1074,13 @@ def tool_registry_lookup(args: dict, ctx: ToolContext) -> dict:
 
     if kind == "hub":
         db = ctx.game_root / "hub_anchors.sqlite"
+        if not db.is_file():
+            return {
+                "ok": True,
+                "hits": [],
+                "count": 0,
+                "note": "hub_anchors.sqlite missing (not built for this corpus)",
+            }
         conn = sqlite3.connect(str(db))
         conn.row_factory = sqlite3.Row
         try:
@@ -726,6 +1178,291 @@ def tool_read_lines(args: dict, ctx: ToolContext) -> dict:
     }
 
 
+@dataclass
+class _GrepScanResult:
+    hits: list[dict]
+    truncated: bool
+    stop_reason: str | None = None
+    files_scanned: int = 0
+    bytes_scanned: int = 0
+    scanned_hint: str | None = None
+    engine: str = "python"
+
+
+def _grep_glob_too_broad(glob_s: str) -> str | None:
+    """过宽 glob 直接拒绝，逼 Agent 带目录前缀（对标 Cursor 少扫垃圾树）。"""
+    g = (glob_s or "").strip().replace("\\", "/")
+    if not g:
+        return "glob_required：请指定带顶层目录的 glob（如 common/**/*.txt），禁止省略"
+    # 去掉可选的 mods/<id>/ 前缀再判断
+    rest = g
+    if rest == "mods" or rest.startswith("mods/"):
+        parts = rest.split("/", 2)
+        if len(parts) < 3:
+            return "glob_too_broad：整池请写 mods/<id>/<top>/...（如 mods/2438003901/common/**/*.txt）"
+        rest = parts[2]
+    bare = rest.lstrip("./")
+    if bare.startswith("**/") or bare in {"**", "**/*", "**/*.txt", "**/*.*", "*.txt", "*"}:
+        return (
+            "glob_too_broad：禁止裸 **/*.txt / *.txt；"
+            "请加顶层目录，如 events/**/*.txt 或 common/decisions/**/*.txt"
+        )
+    top = bare.split("/", 1)[0].split("*", 1)[0]
+    if not top:
+        return "glob_too_broad：无法解析顶层目录"
+    return None
+
+
+def _iter_file_lines_budgeted(
+    fp: Path,
+    *,
+    max_file_bytes: int,
+) -> Iterator[tuple[int, str, int]]:
+    """按行读取；(line_no, line_without_newline, raw_byte_len)。单文件超限即停。"""
+    read_n = 0
+    with fp.open("r", encoding="utf-8-sig", errors="replace", newline="") as f:
+        for i, line in enumerate(f, 1):
+            raw_len = len(line.encode("utf-8", errors="replace"))
+            read_n += raw_len
+            yield i, line.rstrip("\r\n"), raw_len
+            if read_n >= max_file_bytes:
+                return
+
+
+def _grep_files_python(
+    files: list[Path],
+    *,
+    rx: re.Pattern[str],
+    rel_of: Callable[[Path], str],
+    max_hits: int,
+) -> _GrepScanResult:
+    hits: list[dict] = []
+    bytes_scanned = 0
+    files_scanned = 0
+    hint: str | None = None
+    for fp in files:
+        if files_scanned >= _GREP_MAX_FILES:
+            return _GrepScanResult(
+                hits=hits,
+                truncated=True,
+                stop_reason="max_files",
+                files_scanned=files_scanned,
+                bytes_scanned=bytes_scanned,
+                scanned_hint=hint,
+                engine="python",
+            )
+        if bytes_scanned >= _GREP_MAX_BYTES:
+            return _GrepScanResult(
+                hits=hits,
+                truncated=True,
+                stop_reason="max_bytes",
+                files_scanned=files_scanned,
+                bytes_scanned=bytes_scanned,
+                scanned_hint=hint,
+                engine="python",
+            )
+        try:
+            if not fp.is_file():
+                continue
+        except OSError:
+            continue
+        files_scanned += 1
+        rel = rel_of(fp)
+        hint = rel
+        try:
+            for line_no, line, raw_len in _iter_file_lines_budgeted(
+                fp, max_file_bytes=_GREP_MAX_FILE_BYTES
+            ):
+                bytes_scanned += raw_len
+                if rx.search(line):
+                    hits.append(
+                        {
+                            "path": rel,
+                            "line": line_no,
+                            "text": line[:_GREP_LINE_MAX],
+                        }
+                    )
+                    if len(hits) >= max_hits:
+                        return _GrepScanResult(
+                            hits=hits,
+                            truncated=True,
+                            stop_reason="max_hits",
+                            files_scanned=files_scanned,
+                            bytes_scanned=bytes_scanned,
+                            scanned_hint=rel,
+                            engine="python",
+                        )
+                if bytes_scanned >= _GREP_MAX_BYTES:
+                    return _GrepScanResult(
+                        hits=hits,
+                        truncated=True,
+                        stop_reason="max_bytes",
+                        files_scanned=files_scanned,
+                        bytes_scanned=bytes_scanned,
+                        scanned_hint=rel,
+                        engine="python",
+                    )
+        except OSError:
+            continue
+    return _GrepScanResult(
+        hits=hits,
+        truncated=False,
+        stop_reason=None,
+        files_scanned=files_scanned,
+        bytes_scanned=bytes_scanned,
+        scanned_hint=hint,
+        engine="python",
+    )
+
+
+def _resolve_rg_bin() -> str | None:
+    """系统 ripgrep；跳过 Cursor/@vscode 自带 rg（glob 语义不一致，易空命中）。"""
+    for cand in ("/usr/bin/rg", "/usr/local/bin/rg"):
+        if Path(cand).is_file() and os.access(cand, os.X_OK):
+            return cand
+    rg = shutil.which("rg")
+    if not rg:
+        return None
+    norm = rg.replace("\\", "/")
+    if "node_modules" in norm or "@vscode/ripgrep" in norm:
+        return None
+    return rg
+
+
+def _grep_with_rg(
+    *,
+    root: Path,
+    pattern: str,
+    glob_pat: str | None,
+    max_hits: int,
+    literal: bool,
+    path_prefix: str = "",
+    scan_tops: tuple[str, ...] | list[str] | None = None,
+) -> _GrepScanResult | None:
+    """若本机有标准 rg：流式搜。失败返回 None → 调用方走 Python。"""
+    rg = _resolve_rg_bin()
+    if not rg:
+        return None
+    root = root.resolve()
+    if not root.is_dir():
+        return None
+    cmd: list[str] = [
+        rg,
+        "--line-number",
+        "--no-heading",
+        "--color",
+        "never",
+        "--no-messages",
+        "--max-filesize",
+        str(_GREP_MAX_FILE_BYTES),
+        "--max-count",
+        str(max_hits),
+    ]
+    if literal:
+        cmd.append("--fixed-strings")
+    allowed = list(scan_tops) if scan_tops is not None else list(DEFAULT_SCAN_TOPS)
+    g = (glob_pat or "").strip()
+    if g:
+        cmd.extend(["--glob", g])
+    else:
+        for top in allowed:
+            cmd.extend(["--glob", f"{top}/**"])
+    for bad in ("*.sqlite", "*.sqlite-*", "*.png", "*.dds", "*.bin"):
+        cmd.extend(["--glob", f"!{bad}"])
+    # 必须 cwd=root 再搜「.」：rg 的 --glob 相对 cwd 匹配；对绝对路径传 root
+    # 时，形如 common/**/*.txt 的 glob 会整树空命中（本次 VPS 冒烟已踩）。
+    cmd.extend(["--", pattern, "."])
+    try:
+        proc = subprocess.run(
+            cmd,
+            cwd=str(root),
+            capture_output=True,
+            text=True,
+            timeout=_GREP_RG_TIMEOUT_SEC,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if proc.returncode not in (0, 1):
+        return None
+    hits: list[dict] = []
+    files_seen: set[str] = set()
+    for raw in (proc.stdout or "").splitlines():
+        # path:line:text — 从左侧拆路径较麻烦（路径可含冒号）；用 rg --json 更稳，这里用 rsplit
+        parts = raw.split(":", 2)
+        if len(parts) < 3:
+            continue
+        path_part, line_s, text = parts[0], parts[1], parts[2]
+        try:
+            line_no = int(line_s)
+        except ValueError:
+            continue
+        # cwd=root 时常见 ./common/... 或 common/...
+        path_part = path_part.lstrip("./")
+        abs_p = Path(path_part)
+        try:
+            if not abs_p.is_absolute():
+                abs_p = (root / path_part).resolve()
+            rel = abs_p.resolve().relative_to(root).as_posix()
+        except Exception:
+            rel = path_part.replace("\\", "/")
+            if rel.startswith(str(root).replace("\\", "/") + "/"):
+                rel = rel[len(str(root).replace("\\", "/")) + 1 :]
+        top = rel.split("/", 1)[0] if rel else ""
+        if top and top not in allowed and not path_prefix:
+            continue
+        out_path = f"{path_prefix}{rel}" if path_prefix else rel
+        files_seen.add(out_path)
+        hits.append(
+            {
+                "path": out_path,
+                "line": line_no,
+                "text": text[:_GREP_LINE_MAX],
+            }
+        )
+        if len(hits) >= max_hits:
+            return _GrepScanResult(
+                hits=hits,
+                truncated=True,
+                stop_reason="max_hits",
+                files_scanned=len(files_seen),
+                bytes_scanned=0,
+                scanned_hint=out_path,
+                engine="rg",
+            )
+    return _GrepScanResult(
+        hits=hits,
+        truncated=False,
+        stop_reason=None,
+        files_scanned=len(files_seen),
+        bytes_scanned=0,
+        scanned_hint=hits[-1]["path"] if hits else None,
+        engine="rg",
+    )
+
+
+def _grep_result_payload(scan: _GrepScanResult) -> dict[str, Any]:
+    out: dict[str, Any] = {
+        "ok": True,
+        "hits": scan.hits,
+        "count": len(scan.hits),
+        "truncated": scan.truncated,
+        "engine": scan.engine,
+        "files_scanned": scan.files_scanned,
+        "bytes_scanned": scan.bytes_scanned,
+    }
+    if scan.scanned_hint:
+        out["scanned_hint"] = scan.scanned_hint
+    if scan.stop_reason:
+        out["stop_reason"] = scan.stop_reason
+    if scan.truncated and scan.stop_reason in {"max_bytes", "max_files"}:
+        out["hint"] = (
+            "读盘预算已用尽（类 ripgrep 上限）。请收窄 glob 到具体子目录/文件名后重试，"
+            "不要使用 **/*.txt。"
+        )
+    return out
+
+
 def tool_grep_text(args: dict, ctx: ToolContext) -> dict:
     pattern = str(args.get("pattern") or "")
     if not pattern:
@@ -739,15 +1476,17 @@ def tool_grep_text(args: dict, ctx: ToolContext) -> dict:
         return {"ok": False, "error": f"bad_regex: {e}"}
 
     glob_s = str(glob_pat or "").strip()
+    broad = _grep_glob_too_broad(glob_s)
+    if broad:
+        return {"ok": False, "error": broad}
+
     # 整池：glob 以 mods/ 开头时，在对应模组树内搜
     if glob_s.startswith("mods/") or glob_s == "mods":
         resolved = _resolve_corpus_path(ctx, glob_s.split("*", 1)[0].rstrip("/") or "mods")
         if isinstance(resolved, dict):
             return resolved
-        # 简化：若 glob 是 mods/<id>/... 取该 mod root；否则扫全部可见模组
         p = _normalize_rel_path(glob_s)
         rest = "" if p == "mods" else p[5:]
-        roots: list[tuple[Path, str]] = []
         if rest and "/" in rest.split("*", 1)[0]:
             mid = rest.split("/", 1)[0]
             if mid not in ctx.visible_mod_ids:
@@ -756,83 +1495,57 @@ def tool_grep_text(args: dict, ctx: ToolContext) -> dict:
                 return {"ok": False, "error": "mods_not_mounted"}
             mod_root = (ctx.mods_root / mid).resolve()
             sub = rest[len(mid) :].lstrip("/")
-            # strip glob wildcards for _iter base — use mod_root + remaining glob
-            files = _iter_game_files(mod_root, sub if sub else None)
             prefix = f"mods/{mid}/"
-            hits: list[dict] = []
-            for fp in files:
-                try:
-                    text = fp.read_text(encoding="utf-8-sig", errors="replace")
-                except OSError:
-                    continue
-                rel = prefix + fp.relative_to(mod_root).as_posix()
-                for i, line in enumerate(text.splitlines(), 1):
-                    if rx.search(line):
-                        hits.append(
-                            {"path": rel, "line": i, "text": line[:_GREP_LINE_MAX]}
-                        )
-                        if len(hits) >= max_hits:
-                            return {
-                                "ok": True,
-                                "hits": hits,
-                                "truncated": True,
-                                "scanned_hint": rel,
-                            }
-            return {"ok": True, "hits": hits, "truncated": False, "count": len(hits)}
-        # mods 或 mods/* → 各可见模组各扫一遍
-        if ctx.mods_root is None:
-            return {"ok": False, "error": "mods_not_mounted"}
-        hits = []
-        for mid in sorted(ctx.visible_mod_ids):
-            mod_root = (ctx.mods_root / mid).resolve()
-            if not mod_root.is_dir():
-                continue
-            for fp in _iter_game_files(mod_root, None):
-                try:
-                    text = fp.read_text(encoding="utf-8-sig", errors="replace")
-                except OSError:
-                    continue
-                rel = f"mods/{mid}/" + fp.relative_to(mod_root).as_posix()
-                for i, line in enumerate(text.splitlines(), 1):
-                    if rx.search(line):
-                        hits.append(
-                            {"path": rel, "line": i, "text": line[:_GREP_LINE_MAX]}
-                        )
-                        if len(hits) >= max_hits:
-                            return {
-                                "ok": True,
-                                "hits": hits,
-                                "truncated": True,
-                                "scanned_hint": rel,
-                            }
-        return {"ok": True, "hits": hits, "truncated": False, "count": len(hits)}
+            rg_scan = _grep_with_rg(
+                root=mod_root,
+                pattern=pattern,
+                glob_pat=sub if sub else None,
+                max_hits=max_hits,
+                literal=literal,
+                path_prefix=prefix,
+                scan_tops=ctx.scan_tops,
+            )
+            if rg_scan is not None:
+                return _grep_result_payload(rg_scan)
+            files = _iter_game_files(
+                mod_root, sub if sub else None, scan_tops=ctx.scan_tops
+            )
+            scan = _grep_files_python(
+                files,
+                rx=rx,
+                rel_of=lambda fp, _mr=mod_root, _pf=prefix: _pf
+                + fp.relative_to(_mr).as_posix(),
+                max_hits=max_hits,
+            )
+            return _grep_result_payload(scan)
+        return {
+            "ok": False,
+            "error": (
+                "glob_too_broad：整池请写 mods/<id>/<top>/...，"
+                "不要只写 mods/ 或 mods/*"
+            ),
+        }
 
     root = ctx.game_root.resolve()
-    files = _iter_game_files(root, glob_pat)
-    hits = []
-    for fp in files:
-        try:
-            text = fp.read_text(encoding="utf-8-sig", errors="replace")
-        except OSError:
-            continue
-        rel = fp.relative_to(root).as_posix()
-        for i, line in enumerate(text.splitlines(), 1):
-            if rx.search(line):
-                hits.append(
-                    {
-                        "path": rel,
-                        "line": i,
-                        "text": line[:_GREP_LINE_MAX],
-                    }
-                )
-                if len(hits) >= max_hits:
-                    return {
-                        "ok": True,
-                        "hits": hits,
-                        "truncated": True,
-                        "scanned_hint": rel,
-                    }
-    return {"ok": True, "hits": hits, "truncated": False, "count": len(hits)}
+    rg_scan = _grep_with_rg(
+        root=root,
+        pattern=pattern,
+        glob_pat=glob_s or None,
+        max_hits=max_hits,
+        literal=literal,
+        scan_tops=ctx.scan_tops,
+    )
+    if rg_scan is not None:
+        return _grep_result_payload(rg_scan)
+    files = _iter_game_files(root, glob_pat, scan_tops=ctx.scan_tops)
+    scan = _grep_files_python(
+        files,
+        rx=rx,
+        rel_of=lambda fp, _r=root: fp.relative_to(_r).as_posix(),
+        max_hits=max_hits,
+    )
+    return _grep_result_payload(scan)
+
 
 
 def tool_run_code(args: dict, ctx: ToolContext) -> dict:
@@ -914,9 +1627,26 @@ def _country_name_candidates(ctx: ToolContext, rows: list[dict]) -> list[dict]:
     return out
 
 
-def _iter_game_files(root: Path, glob_pat: str | None) -> list[Path]:
-    """只扫 common / events / map_data 文本。"""
-    allowed = ["common", "events", "map_data"]
+def _iter_game_files(
+    root: Path,
+    glob_pat: str | None,
+    *,
+    scan_tops: tuple[str, ...] | list[str] | None = None,
+) -> list[Path]:
+    """扫 scan_tops 下文本（默认 Vic3：common / events / map_data）。"""
+    allowed = list(scan_tops) if scan_tops is not None else list(DEFAULT_SCAN_TOPS)
+    text_suffix = {
+        ".txt",
+        ".csv",
+        ".md",
+        ".json",
+        ".yml",
+        ".yaml",
+        ".tsv",
+        ".gui",
+        ".gfx",
+        ".lua",
+    }
     out: list[Path] = []
     if glob_pat:
         for p in root.glob(glob_pat):
@@ -938,10 +1668,10 @@ def _iter_game_files(root: Path, glob_pat: str | None) -> list[Path]:
         base = root / top
         if not base.is_dir():
             continue
-        for p in base.rglob("*.txt"):
-            out.append(p)
+        for p in base.rglob("*"):
+            if p.is_file() and p.suffix.lower() in text_suffix:
+                out.append(p)
     return out
-
 
 def dumps_tool_result(obj: Any, *, limit: int = 28_000) -> str:
     s = json.dumps(obj, ensure_ascii=False, indent=2, default=str)

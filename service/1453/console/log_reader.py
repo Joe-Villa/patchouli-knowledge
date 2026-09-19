@@ -1,4 +1,4 @@
-"""从框架 JSONL 汇总问答；按需读取核心 reqlog 的 LLM 输入。"""
+"""从 log/1836 reqlog（index.jsonl + requests/）汇总问答；按需读 LLM 输入输出。"""
 
 from __future__ import annotations
 
@@ -13,9 +13,6 @@ from typing import Any
 log = logging.getLogger("console.log_reader")
 
 BJ = timezone(timedelta(hours=8))
-
-TERMINAL = frozenset({"completed", "rate_limited", "busy"})
-_DAY_FILE_RE = re.compile(r"^(\d{8})\.jsonl$")
 
 
 @dataclass
@@ -38,67 +35,6 @@ class TaskRow:
     date_bj: str = ""  # YYYY-MM-DD
 
 
-def _shorten(token: str, *, keep: int = 8) -> str:
-    t = (token or "").strip()
-    if len(t) <= keep:
-        return t
-    return t[:keep] + "…"
-
-
-def _label_from_real_key(real_key: str) -> str:
-    label = str(real_key)
-    if label.startswith("qq:"):
-        return f"QQ {label[3:]}"
-    if label.startswith("web:"):
-        rest = label[4:]
-        if rest.startswith("conv:"):
-            parts = rest.split(":")
-            if len(parts) >= 3:
-                return f"Web {_shorten(parts[1])} · {_shorten(parts[-1])}"
-        return f"Web {_shorten(rest)}"
-    return label
-
-
-def _load_proxy_inverse(path: Path) -> dict[str, str]:
-    if not path.is_file():
-        return {}
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {}
-    users = data.get("users") or {}
-    out: dict[str, str] = {}
-    for real_key, logical in users.items():
-        out[str(logical)] = _label_from_real_key(str(real_key))
-    return out
-
-
-def _conversation_from_address(
-    addresses: dict[str, str], logical_address: str
-) -> str:
-    addr = str(logical_address or "").strip()
-    if not addr:
-        return ""
-    for real_key, logical in addresses.items():
-        if logical != addr:
-            continue
-        parts = str(real_key).split(":")
-        if len(parts) >= 4 and parts[0] == "web" and parts[1] == "conv":
-            return parts[-1]
-        return ""
-    return ""
-
-
-def _load_addresses(path: Path) -> dict[str, str]:
-    if not path.is_file():
-        return {}
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {}
-    return {str(k): str(v) for k, v in (data.get("addresses") or {}).items()}
-
-
 def _fmt_bj(ts: float) -> str:
     return datetime.fromtimestamp(ts, BJ).strftime("%m-%d %H:%M:%S")
 
@@ -114,22 +50,29 @@ def _excerpt(content: str, *, max_len: int = 160) -> str:
     return text[: max_len - 1] + "…"
 
 
-def _status_zh(status: str, extra: dict[str, Any]) -> str:
-    mapping = {
-        "completed": "完成",
-        "rate_limited": "频率过高",
-        "busy": "忙",
-    }
-    if status == "completed" and extra.get("instant"):
-        kind = extra.get("precheck")
-        if kind == "too_short":
-            return "预检·过短"
-        if kind == "friend_add":
-            return "预检·好友"
-        if extra.get("topic_gate") == "reject" or extra.get("topic_gate_reject"):
-            return "主题门控"
-        return "即时回复"
-    return mapping.get(status, status)
+# web/ask 会把会话记忆拼进 question；控制台列表只展示真实当前问句。
+_CURRENT_QUESTION_MARKERS = (
+    "【当前问题】",
+    "当前问题：",
+    "当前问题:",
+)
+
+
+def display_question(raw: str) -> str:
+    """去掉指代消解记忆前缀，返回用户当前问题。"""
+    text = (raw or "").replace("\r\n", "\n").strip()
+    if not text:
+        return ""
+    best = -1
+    marker_len = 0
+    for marker in _CURRENT_QUESTION_MARKERS:
+        idx = text.rfind(marker)
+        if idx > best:
+            best = idx
+            marker_len = len(marker)
+    if best >= 0:
+        return text[best + marker_len :].strip()
+    return text
 
 
 def _normalize_date(raw: str | None) -> str | None:
@@ -149,36 +92,34 @@ def date_display(yyyymmdd: str) -> str:
     return f"{yyyymmdd[:4]}-{yyyymmdd[4:6]}-{yyyymmdd[6:8]}"
 
 
-def list_log_dates(log_dir: Path) -> list[str]:
-    """有框架日志的日期，降序，形如 YYYY-MM-DD。"""
-    log_dir = Path(log_dir)
-    if not log_dir.is_dir():
-        return []
-    days: list[str] = []
-    for p in log_dir.glob("????????.jsonl"):
-        m = _DAY_FILE_RE.match(p.name)
-        if m:
-            days.append(m.group(1))
-    days.sort(reverse=True)
-    return [date_display(d) for d in days]
+def _parse_started_at(raw: str) -> datetime | None:
+    s = (raw or "").strip()
+    if not s:
+        return None
+    # 常见：2026-09-15T16:13:01+0800 / +08:00 / Z
+    if re.search(r"[+-]\d{4}$", s):
+        s = s[:-5] + s[-5:-2] + ":" + s[-2:]
+    if s.endswith("Z"):
+        s = s[:-1] + "+00:00"
+    try:
+        dt = datetime.fromisoformat(s)
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=BJ)
+    return dt.astimezone(BJ)
 
 
-def _day_paths(
-    log_dir: Path, *, date_yyyymmdd: str | None, days: int
-) -> list[Path]:
-    if date_yyyymmdd:
-        p = log_dir / f"{date_yyyymmdd}.jsonl"
-        return [p] if p.is_file() else []
-    if days <= 0:
-        return sorted(log_dir.glob("????????.jsonl"), reverse=True)
-    now = datetime.now(BJ)
-    out: list[Path] = []
-    for i in range(days):
-        day = (now - timedelta(days=i)).strftime("%Y%m%d")
-        p = log_dir / f"{day}.jsonl"
-        if p.is_file():
-            out.append(p)
-    return out
+def _status_from_index(rec: dict[str, Any]) -> tuple[str, str]:
+    ok = rec.get("ok")
+    if ok is True:
+        return "completed", "完成"
+    if ok is False:
+        return "failed", "失败"
+    stop = str(rec.get("stop_reason") or "").strip()
+    if stop:
+        return stop, stop
+    return "unknown", "未知"
 
 
 def _reqlog_dir_exists(req_dir: Path) -> bool:
@@ -196,10 +137,10 @@ def _reqlog_dir_exists(req_dir: Path) -> bool:
 def resolve_reqlog_dir(
     *,
     core_request_id: str,
-    core_log_dir: str,
+    core_log_dir: str = "",
     reqlog_root: Path | None,
 ) -> Path | None:
-    """定位一次请求的 reqlog 目录。优先相对挂载根，再试绝对路径。"""
+    """定位一次请求的 reqlog 目录。优先 reqlog_root/requests/{id}。"""
     rid = (core_request_id or "").strip()
     raw = (core_log_dir or "").strip()
     candidates: list[Path] = []
@@ -221,149 +162,123 @@ def resolve_reqlog_dir(
         if key in seen:
             continue
         seen.add(key)
-        if _reqlog_dir_exists(p):
+        if p.is_dir():
             return p
     return None
 
 
+def _iter_index_records(reqlog_root: Path) -> list[dict[str, Any]]:
+    path = Path(reqlog_root) / "index.jsonl"
+    if not path.is_file():
+        return []
+    out: list[dict[str, Any]] = []
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return []
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(rec, dict) and rec.get("request_id"):
+            out.append(rec)
+    return out
+
+
+def list_log_dates(reqlog_root: Path) -> list[str]:
+    """有 reqlog 记录的日期，降序，形如 YYYY-MM-DD。"""
+    days: set[str] = set()
+    for rec in _iter_index_records(reqlog_root):
+        dt = _parse_started_at(str(rec.get("started_at") or ""))
+        if dt is None:
+            rid = str(rec.get("request_id") or "")
+            m = re.match(r"^(\d{8})_", rid)
+            if m:
+                days.add(m.group(1))
+            continue
+        days.add(dt.strftime("%Y%m%d"))
+    ordered = sorted(days, reverse=True)
+    return [date_display(d) for d in ordered]
+
+
 def load_recent_tasks(
-    log_dir: Path,
-    proxy_path: Path,
+    reqlog_root: Path,
     *,
     limit: int = 80,
-    days: int = 3,
+    days: int = 0,
     date: str | None = None,
-    reqlog_root: Path | None = None,
 ) -> tuple[list[TaskRow], int]:
-    """返回 (rows, total_matched)。date 为 YYYY-MM-DD 时只扫该日；否则扫近 days 天。"""
-    log_dir = Path(log_dir)
-    inv = _load_proxy_inverse(proxy_path)
-    addresses = _load_addresses(proxy_path)
+    """从 index.jsonl 列问答任务。date=YYYY-MM-DD 时只保留该日。"""
+    root = Path(reqlog_root)
     date_key = _normalize_date(date)
-    day_paths = _day_paths(log_dir, date_yyyymmdd=date_key, days=days)
-
-    requests: dict[str, dict[str, Any]] = {}
-    replies: dict[str, dict[str, Any]] = {}
-
-    for path in day_paths:
-        try:
-            lines = path.read_text(encoding="utf-8").splitlines()
-        except OSError:
-            continue
-        for line in lines:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                ev = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            kind = ev.get("kind")
-            task_id = str(ev.get("task_id") or "")
-            if not task_id:
-                continue
-            if kind == "request":
-                prev = requests.get(task_id)
-                if prev is None or float(ev.get("ts_unix") or 0) >= float(
-                    prev.get("ts_unix") or 0
-                ):
-                    requests[task_id] = ev
-            elif kind == "reply":
-                status = str(ev.get("status") or "")
-                if status not in TERMINAL:
-                    continue
-                prev = replies.get(task_id)
-                if prev is None or float(ev.get("ts_unix") or 0) >= float(
-                    prev.get("ts_unix") or 0
-                ):
-                    replies[task_id] = ev
+    now = datetime.now(BJ)
+    min_ts: float | None = None
+    if date_key is None and days > 0:
+        min_ts = (now - timedelta(days=days)).timestamp()
 
     rows: list[TaskRow] = []
-    for task_id, req in requests.items():
-        rep = replies.get(task_id)
-        if rep is None:
+    for rec in _iter_index_records(root):
+        rid = str(rec.get("request_id") or "").strip()
+        if not rid:
             continue
-        ts = float(req.get("ts_unix") or rep.get("ts_unix") or 0)
-        logical_user = str(req.get("logical_user") or rep.get("logical_user") or "")
-        source = str(req.get("source") or "").strip() or "—"
-        conversation_id = str(req.get("conversation_id") or "").strip()
-        if not conversation_id:
-            conversation_id = _conversation_from_address(
-                addresses, str(req.get("logical_address") or "")
-            )
-        user_label = inv.get(logical_user, "")
-        if not user_label:
-            if source == "web" and logical_user:
-                user_label = f"Web · {logical_user}"
-            elif source == "qq" and logical_user:
-                user_label = f"QQ · {logical_user}"
-            else:
-                user_label = logical_user or "未知"
-        status = str(rep.get("status") or "")
-        extra = rep.get("extra") if isinstance(rep.get("extra"), dict) else {}
-        full = str(rep.get("content") or "").replace("\r\n", "\n").strip()
-        core_rid = str(extra.get("core_request_id") or "").strip()
-        core_dir = str(extra.get("core_log_dir") or "").strip()
+        dt = _parse_started_at(str(rec.get("started_at") or ""))
+        if dt is None:
+            m = re.match(r"^(\d{8})_", rid)
+            if m:
+                try:
+                    dt = datetime.strptime(m.group(1), "%Y%m%d").replace(tzinfo=BJ)
+                except ValueError:
+                    dt = None
+        if dt is None:
+            continue
+        day = dt.strftime("%Y%m%d")
+        if date_key is not None and day != date_key:
+            continue
+        ts = dt.timestamp()
+        if min_ts is not None and ts < min_ts:
+            continue
+
+        status, status_zh = _status_from_index(rec)
+        answer = str(rec.get("answer") or "").replace("\r\n", "\n").strip()
+        elapsed = rec.get("elapsed_sec")
+        try:
+            elapsed_f = float(elapsed) if elapsed is not None else None
+        except (TypeError, ValueError):
+            elapsed_f = None
+        req_dir = resolve_reqlog_dir(
+            core_request_id=rid,
+            core_log_dir=str(rec.get("dir") or ""),
+            reqlog_root=root,
+        )
+        source = str(rec.get("source") or "").strip() or "web"
         rows.append(
             TaskRow(
-                task_id=task_id,
+                task_id=rid,
                 time_bj=_fmt_bj(ts),
                 ts_unix=ts,
-                user_label=user_label,
-                question=str(req.get("question") or "").strip(),
+                user_label="Web",
+                question=display_question(str(rec.get("question") or "")),
                 status=status,
-                status_zh=_status_zh(status, extra),
-                result_full=full,
-                result_excerpt=_excerpt(full),
+                status_zh=status_zh,
+                result_full=answer,
+                result_excerpt=_excerpt(answer),
                 source=source,
-                conversation_id=conversation_id,
-                elapsed_sec=rep.get("elapsed_sec"),
-                core_request_id=core_rid,
-                core_log_dir=core_dir,
-                has_llm=False,
+                conversation_id=str(rec.get("conversation_id") or "").strip(),
+                elapsed_sec=elapsed_f,
+                core_request_id=rid,
+                core_log_dir=str(req_dir) if req_dir else "",
+                has_llm=_reqlog_dir_exists(req_dir) if req_dir else False,
                 date_bj=_date_bj(ts),
             )
         )
 
     rows.sort(key=lambda r: r.ts_unix, reverse=True)
     total = len(rows)
-    sliced = rows[:limit]
-    for row in sliced:
-        if not (row.core_request_id or row.core_log_dir):
-            continue
-        row.has_llm = (
-            resolve_reqlog_dir(
-                core_request_id=row.core_request_id,
-                core_log_dir=row.core_log_dir,
-                reqlog_root=reqlog_root,
-            )
-            is not None
-        )
-    return sliced, total
-
-
-def _read_task_bundle(log_dir: Path, task_id: str) -> dict[str, Any] | None:
-    path = Path(log_dir) / "by_id" / f"{task_id}.json"
-    if not path.is_file():
-        return None
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return None
-
-
-def _core_ids_from_bundle(bundle: dict[str, Any]) -> tuple[str, str]:
-    rid = ""
-    log_dir = ""
-    for ev in reversed(list(bundle.get("events") or [])):
-        if not isinstance(ev, dict) or ev.get("kind") != "reply":
-            continue
-        extra = ev.get("extra") if isinstance(ev.get("extra"), dict) else {}
-        rid = str(extra.get("core_request_id") or "").strip() or rid
-        log_dir = str(extra.get("core_log_dir") or "").strip() or log_dir
-        if rid or log_dir:
-            break
-    return rid, log_dir
+    return rows[: max(1, limit)], total
 
 
 def _safe_load_json(path: Path) -> Any | None:
@@ -397,7 +312,6 @@ _THINK_TAG_RE = re.compile(
 
 
 def _split_think_tags(text: str) -> tuple[str, str]:
-    """从 content 中拆出 <think>/<thinking>/<reasoning> 块 → (cot, remainder)。"""
     if not text:
         return "", ""
     chunks: list[str] = []
@@ -420,7 +334,6 @@ def _summarize_messages(messages: Any) -> list[dict[str, Any]]:
         role = str(m.get("role") or "")
         text = _content_to_text(m.get("content"))
         item: dict[str, Any] = {"role": role, "content": text}
-        # 输入侧若带 COT 字段也透出
         for key in ("reasoning_content", "reasoning", "thinking"):
             if m.get(key):
                 item[key] = _content_to_text(m.get(key))
@@ -447,7 +360,6 @@ def _message_from_response_body(body: Any) -> dict[str, Any]:
 
 
 def _collect_cot_parts(msg: dict[str, Any], content: str) -> tuple[str, str]:
-    """返回 (cot_text, content_without_think_tags)。"""
     cot_parts: list[str] = []
     for key in (
         "reasoning_content",
@@ -462,7 +374,6 @@ def _collect_cot_parts(msg: dict[str, Any], content: str) -> tuple[str, str]:
         text = _content_to_text(raw).strip()
         if text:
             cot_parts.append(text)
-    # 少数厂商把细节放在数组里
     details = msg.get("reasoning_details")
     if isinstance(details, list):
         for block in details:
@@ -476,7 +387,6 @@ def _collect_cot_parts(msg: dict[str, Any], content: str) -> tuple[str, str]:
     tagged, rest = _split_think_tags(content)
     if tagged:
         cot_parts.append(tagged)
-    # 去重保序
     seen: set[str] = set()
     uniq: list[str] = []
     for p in cot_parts:
@@ -488,7 +398,6 @@ def _collect_cot_parts(msg: dict[str, Any], content: str) -> tuple[str, str]:
 
 
 def extract_llm_output(resp_payload: Any) -> dict[str, Any] | None:
-    """从 reqlog 的 *_response.json / response.json 抽出助手输出与 COT。"""
     if not isinstance(resp_payload, dict):
         return None
     body = resp_payload.get("body")
@@ -499,12 +408,8 @@ def extract_llm_output(resp_payload: Any) -> dict[str, Any] | None:
     answer_text = resp_payload.get("answer_text")
     if answer_text is not None:
         answer_text = str(answer_text)
-    # 若 body 缺失但有 answer_text，仍展示
     if not content_clean and answer_text:
         content_clean = answer_text
-    if not any([cot, content_clean, tool_calls, resp_payload.get("error"), answer_text]):
-        # 空响应也返回骨架，便于前端标明「无输出」
-        pass
     finish = resp_payload.get("finish_reason")
     if finish is None and isinstance(body, dict):
         choices = body.get("choices") or []
@@ -558,33 +463,18 @@ def _pair_call(
 
 def load_llm_calls(
     *,
-    framework_log_dir: Path,
     task_id: str,
-    reqlog_root: Path | None,
+    reqlog_root: Path,
 ) -> dict[str, Any]:
-    """读取该 task 对应的全部 LLM 请求输入与响应输出（含 COT）。"""
+    """读取该 request_id 下全部 LLM 请求/响应（含 COT）。"""
     tid = str(task_id or "").strip()
     if not tid or "/" in tid or "\\" in tid or ".." in tid:
         return {"ok": False, "error": "无效 task_id", "calls": []}
 
-    bundle = _read_task_bundle(framework_log_dir, tid)
-    if bundle is None:
-        return {"ok": False, "error": "找不到该任务日志", "calls": []}
-
-    core_rid, core_dir = _core_ids_from_bundle(bundle)
-    req_dir = resolve_reqlog_dir(
-        core_request_id=core_rid,
-        core_log_dir=core_dir,
-        reqlog_root=reqlog_root,
-    )
+    root = Path(reqlog_root)
+    req_dir = resolve_reqlog_dir(core_request_id=tid, reqlog_root=root)
     if req_dir is None:
-        return {
-            "ok": True,
-            "task_id": tid,
-            "core_request_id": core_rid,
-            "calls": [],
-            "note": "无核心 reqlog（预检/门控/失败或未挂载）",
-        }
+        return {"ok": False, "error": "找不到该任务日志", "calls": []}
 
     calls: list[dict[str, Any]] = []
 
@@ -616,7 +506,7 @@ def load_llm_calls(
     return {
         "ok": True,
         "task_id": tid,
-        "core_request_id": core_rid or req_dir.name,
+        "core_request_id": tid,
         "reqlog_dir": str(req_dir),
         "calls": calls,
     }

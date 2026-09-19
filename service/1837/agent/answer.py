@@ -16,7 +16,7 @@ _AGENT_DIR = Path(__file__).resolve().parent
 def load_answer_system() -> str:
     ans = (_AGENT_DIR / "rules" / "answer_system.txt").read_text(encoding="utf-8")
     prior = (_AGENT_DIR / "rules" / "prior_knowledge.txt").read_text(encoding="utf-8")
-    return ans.strip() + "\n\n## prior_knowledge\n" + prior.strip()
+    return ans.strip() + "\n\n" + prior.strip()
 
 
 def synthesize_answer(

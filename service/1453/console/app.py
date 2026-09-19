@@ -53,7 +53,7 @@ def _html(path: Path) -> FileResponse:
 
 def _normalize_service(service: str | None) -> str:
     sid = (service or "qa").strip().lower()
-    if sid in ("qa", "web", "qq", "问答"):
+    if sid in ("qa", "web", "问答"):
         return "qa"
     if sid in ("recommend", "mod", "模组推荐"):
         return "recommend"
@@ -124,7 +124,7 @@ def create_app(settings: ConsoleSettings | None = None) -> FastAPI:
         if sid == "recommend":
             dates = list_recommend_log_dates(cfg.recommend_log_dir)
         else:
-            dates = list_log_dates(cfg.framework_log_dir)
+            dates = list_log_dates(cfg.reqlog_dir)
         return {"service": sid, "dates": dates}
 
     @app.get("/api/logs/recent")
@@ -179,12 +179,10 @@ def create_app(settings: ConsoleSettings | None = None) -> FastAPI:
 
         try:
             rows, total = load_recent_tasks(
-                cfg.framework_log_dir,
-                cfg.proxy_store_path,
+                cfg.reqlog_dir,
                 limit=cfg.log_limit,
                 days=0,
                 date=date,
-                reqlog_root=cfg.reqlog_dir,
             )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -223,7 +221,6 @@ def create_app(settings: ConsoleSettings | None = None) -> FastAPI:
         _: str = Depends(_auth_device),
     ) -> dict[str, Any]:
         data = load_llm_calls(
-            framework_log_dir=cfg.framework_log_dir,
             task_id=task_id,
             reqlog_root=cfg.reqlog_dir,
         )

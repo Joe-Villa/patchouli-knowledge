@@ -38,7 +38,7 @@ def _load_text(path: Path) -> str:
 def load_find_system(*, include_structure: bool = True) -> str:
     rules = _load_text(_AGENT_DIR / "rules" / "find_system.txt")
     prior = _load_text(_AGENT_DIR / "rules" / "prior_knowledge.txt")
-    parts = [rules.strip(), "", "## prior_knowledge", prior.strip()]
+    parts = [rules.strip(), "", prior.strip()]
     if include_structure:
         struct = _load_text(_AGENT_DIR / "derived" / "structure.md")
         parts.extend(["", "## structure.md", struct.strip()])

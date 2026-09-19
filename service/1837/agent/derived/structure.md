@@ -27,7 +27,3 @@
 2. **尖需求（专名、精确短语）**：`grep_text` 搜 title_zh/title_en/description，或 SQL `LIKE`
 3. **糊需求、候选面大**：`recommend_mods`（Fit 打分召回），不要用它做「谁最多」类题
 4. 提到模组时若 title_zh ≠ title_en，证据与回答都要带上两边
-
-## 先验
-
-领域约定见 `rules/prior_knowledge.txt`（致爱丽丝、by天草等）；命中那些意图时优先参考，并可用库内数据印证。

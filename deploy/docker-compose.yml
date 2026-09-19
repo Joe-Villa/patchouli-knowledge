@@ -5,15 +5,21 @@
 # Vic3 问答 web=:1836（镜像 patchouli）
 # 模组社区 recommend=:1837（镜像 patchouli-recommend）——工坊 Agent + 惊喜抽样
 # 模组卡片 cards=:1838（镜像 patchouli-cards）——浏览 / 按 id·名搜索工坊卡片全字段
-# 官方 QQ 机器人 qqbot=:3817（镜像 patchouli-qqbot，健康检查；出站连官方 Gateway）
 # 运维控制台 console=:1453（镜像 patchouli-console）——只读问答 / 模组社区日志；不对用户展示
+# Interwar 官网 interwar=:1910（镜像 patchouli-interwar）
+# HOI4 问答 hoi4=:1936（镜像 patchouli-hoi4）
+# HOI4 国策总览+出图 focus1939=:1939（镜像 patchouli-focus1939）
+#
+# 日志：主机 log/<端口>/ bind 挂载，可预置历史并随服务追加（非 named volume）。
 #
 # docker compose -f deploy/docker-compose.yml build welcome && … up -d welcome
 # docker compose -f deploy/docker-compose.yml build web && … up -d web
 # docker compose -f deploy/docker-compose.yml build recommend && … up -d recommend
 # docker compose -f deploy/docker-compose.yml build cards && … up -d cards
-# docker compose -f deploy/docker-compose.yml build qqbot && … up -d qqbot
 # docker compose -f deploy/docker-compose.yml build console && … up -d console
+# docker compose -f deploy/docker-compose.yml build interwar && … up -d interwar
+# docker compose -f deploy/docker-compose.yml build hoi4 && … up -d hoi4
+# docker compose -f deploy/docker-compose.yml build focus1939 && … up -d focus1939
 
 name: patchouli
 
@@ -31,7 +37,6 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile
-    # 与 console / welcome / qqbot 镜像分离；改名需计划窗口，避免误 recreate 掐问答
     image: patchouli:latest
     env_file:
       - path: .env
@@ -49,7 +54,7 @@ services:
       - ../database/data/steam/529340/vanilla:/app/service/1836/data/game
       - ../database/data/steam/529340/mods:/app/service/1836/data/mods
       - ../service/1836/data/mods_catalog.json:/app/service/1836/data/mods_catalog.json:ro
-      - patchouli_reqlog:/app/log/1836
+      - ../log/1836:/app/log/1836
       - patchouli_sessions:/app/service/1836/sandbox/sessions
     privileged: true
     command: ["web"]
@@ -71,7 +76,7 @@ services:
       WORKSHOP_DB: /data/workshop_details_all.sqlite
       WORKSHOP_BRIEF_DB: /data/vic3_mods_all.sqlite
       PYTHONPATH: /app:/app/service/1837
-      RECOMMEND_LOG_DIR: /app/service/1837/logs
+      RECOMMEND_LOG_DIR: /app/log/1837
       DEEPSEEK_BASE_URL: "${DEEPSEEK_BASE_URL:-https://api.deepseek.com}"
       DEEPSEEK_MODEL: "${DEEPSEEK_MODEL:-deepseek-chat}"
     ports:
@@ -81,7 +86,7 @@ services:
       - ../database/data/steam/529340/community/workshop_details/workshop_details_ge300.sqlite:/data/workshop_details_ge300.sqlite:ro
       - ../database/data/steam/529340/community/workshop_brief/vic3_mods_all.sqlite:/data/vic3_mods_all.sqlite:ro
       - ../database/data/steam/529340/community/workshop_brief/vic3_mods_ge300.sqlite:/data/vic3_mods_ge300.sqlite:ro
-      - patchouli_recommend_logs:/app/service/1837/logs
+      - ../log/1837:/app/log/1837
     restart: unless-stopped
 
   cards:
@@ -98,40 +103,10 @@ services:
     ports:
       - "1838:1838"
     volumes:
-      # 与 recommend 同一份 details / brief（含 title_en、title_zh、author）
       - ../database/data/steam/529340/community/workshop_details/workshop_details_all.sqlite:/data/workshop_details_all.sqlite:ro
       - ../database/data/steam/529340/community/workshop_details/workshop_details_ge300.sqlite:/data/workshop_details_ge300.sqlite:ro
       - ../database/data/steam/529340/community/workshop_brief/vic3_mods_all.sqlite:/data/vic3_mods_all.sqlite:ro
       - ../database/data/steam/529340/community/workshop_brief/vic3_mods_ge300.sqlite:/data/vic3_mods_ge300.sqlite:ro
-    restart: unless-stopped
-
-  qqbot:
-    build:
-      context: ..
-      dockerfile: deploy/Dockerfile.qqbot
-    image: patchouli-qqbot:latest
-    env_file:
-      - path: .env
-        required: false
-    environment:
-      CORE_ROOT: /app/service/1836
-      PATCHOULI_CONFIG: /app/和QQ的通信管线/patchouli.request.toml
-      QQBOT_HEALTH_HOST: "0.0.0.0"
-      QQBOT_HEALTH_PORT: "3817"
-      # 默认沙箱；正式上线后在 .env 设 QQBOT_SANDBOX=0
-      QQBOT_SANDBOX: "${QQBOT_SANDBOX:-1}"
-    ports:
-      - "3817:3817"
-    volumes:
-      - ../database/data/steam/529340/vanilla:/app/service/1836/data/game
-      - ../database/data/steam/529340/mods:/app/service/1836/data/mods
-      - ../service/1836/data/mods_catalog.json:/app/service/1836/data/mods_catalog.json:ro
-      - patchouli_reqlog:/app/service/1836/patchouli/logs
-      - patchouli_sessions:/app/service/1836/sandbox/sessions
-      - patchouli_framework_logs:/app/和QQ的通信管线/logs
-      - patchouli_runtime:/app/和QQ的通信管线/runtime
-    privileged: true
-    command: ["qqbot"]
     restart: unless-stopped
 
   console:
@@ -145,25 +120,91 @@ services:
     environment:
       CONSOLE_HOST: "0.0.0.0"
       CONSOLE_PORT: "1453"
-      FRAMEWORK_LOG_DIR: /app/和QQ的通信管线/logs/framework
-      PROXY_STORE_PATH: /app/和QQ的通信管线/runtime/proxy_tables.json
-      CONSOLE_DATA_DIR: /app/和QQ的通信管线/console_data
+      CONSOLE_DATA_DIR: /app/service/1453/console_data
       REQLOG_DIR: /app/log/1836
-      RECOMMEND_LOG_DIR: /app/service/1837/logs
+      RECOMMEND_LOG_DIR: /app/log/1837
+      FRAMEWORK_LOG_DIR: /app/log/1453
     ports:
       - "1453:1453"
     volumes:
-      - patchouli_framework_logs:/app/和QQ的通信管线/logs
-      - patchouli_runtime:/app/和QQ的通信管线/runtime
-      - patchouli_console_data:/app/和QQ的通信管线/console_data
-      - patchouli_reqlog:/app/log/1836
-      - patchouli_recommend_logs:/app/service/1837/logs:ro
+      - ../log/1836:/app/log/1836:ro
+      - ../log/1837:/app/log/1837:ro
+      - ../log/1453:/app/log/1453
+      - patchouli_console_data:/app/service/1453/console_data
+    restart: unless-stopped
+
+  interwar:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.interwar
+    image: patchouli-interwar:latest
+    environment:
+      INTERWAR_HOST: "0.0.0.0"
+      INTERWAR_PORT: "1910"
+      INTERWAR_DERIVED: /data/1910
+      PYTHONPATH: /app/service/1910
+    ports:
+      - "1910:1910"
+    volumes:
+      - ../database/derived/1910:/data/1910:ro
+    restart: unless-stopped
+
+  hoi4:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.1936
+    image: patchouli-hoi4:latest
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      CORE_ROOT: /app/service/1936
+      PATCHOULI_CONFIG: /app/service/1936/patchouli.request.toml
+      PYTHONPATH: /app/service/1936:/app
+      WEB_HOST: "0.0.0.0"
+      WEB_PORT: "1936"
+      HOI4_MOD_START: /data/derived_hoi4/mod_start.json
+    ports:
+      - "1936:1936"
+    volumes:
+      - ../database/data/steam/394360/vanilla:/app/service/1936/data/game
+      - ../database/data/steam/394360/mods:/app/service/1936/data/mods
+      - ../service/1936/data/mods_catalog.json:/app/service/1936/data/mods_catalog.json:ro
+      - ../database/derived/hoi4:/data/derived_hoi4:ro
+      - ../log/1936:/app/log/1936
+      - patchouli_hoi4_sessions:/app/service/1936/sandbox/sessions
+    privileged: true
+    command: ["web"]
+    restart: unless-stopped
+
+  focus1939:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.1939
+    image: patchouli-focus1939:latest
+    environment:
+      FOCUS_HOST: "0.0.0.0"
+      FOCUS_PORT: "1939"
+      FOCUS_GAME_ROOT: /data/vanilla
+      FOCUS_MODS_ROOT: /data/mods
+      FOCUS_MODS_CATALOG: /data/mods_catalog.json
+      FOCUS_DERIVED: /data/derived_png
+      FOCUS_DERIVED_FOCUS: /data/derived_focus
+      FOCUS_MOD_START: /data/derived_hoi4/mod_start.json
+      FOCUS_STEAM_GAME: /data/vanilla
+      PYTHONPATH: /app/service/1939:/app/tool:/app/tool/hoi4treesnap
+    ports:
+      - "1939:1939"
+    volumes:
+      - ../database/data/steam/394360/vanilla:/data/vanilla:ro
+      - ../database/data/steam/394360/mods:/data/mods:ro
+      - ../service/1936/data/mods_catalog.json:/data/mods_catalog.json:ro
+      - ../database/derived/1939:/data/derived_png
+      - ../database/derived/focus:/data/derived_focus:ro
+      - ../database/derived/hoi4:/data/derived_hoi4:ro
     restart: unless-stopped
 
 volumes:
-  patchouli_reqlog:
   patchouli_sessions:
-  patchouli_framework_logs:
-  patchouli_runtime:
   patchouli_console_data:
-  patchouli_recommend_logs:
+  patchouli_hoi4_sessions:

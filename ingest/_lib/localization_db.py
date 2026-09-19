@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 import sqlite3
 from dataclasses import dataclass
@@ -193,6 +194,104 @@ def build_localization_db(
             ("fts", "localization_fts/trigram"),
         )
         conn.commit()
+    finally:
+        conn.close()
+    return stats
+
+
+def resolve_loc_root(mod_dir: Path) -> Path | None:
+    """HOI4 常用 localisation；Vic3 用 localization。"""
+    for name in ("localisation", "localization"):
+        cand = Path(mod_dir) / name
+        if cand.is_dir():
+            return cand
+    return None
+
+
+def merge_localization_into_db(
+    db_path: Path,
+    loc_root: Path,
+    *,
+    langs: tuple[str, ...] = ("simp_chinese",),
+    source_prefix: str = "",
+) -> LocStats:
+    """把 loc_root 下指定语种 upsert 进已有 localization.sqlite，并重建 FTS。
+
+    source_file = source_prefix + 相对 loc_root 的路径（若有 prefix，中间加 /）。
+    后写覆盖同 (key, lang)。不删其它语种或其它来源条目。
+    """
+    db_path = Path(db_path)
+    loc_root = Path(loc_root)
+    if not db_path.is_file():
+        raise FileNotFoundError(f"localization db missing: {db_path}")
+    if not loc_root.is_dir():
+        raise FileNotFoundError(f"loc root missing: {loc_root}")
+
+    files = iter_loc_yml_files(loc_root, langs)
+    store: dict[tuple[str, str], tuple[str, str]] = {}
+    stats = LocStats(by_lang={lang: 0 for lang in langs})
+    prefix = source_prefix.strip().strip("/")
+
+    for lang, path in files:
+        rel = path.relative_to(loc_root).as_posix()
+        source_file = f"{prefix}/{rel}" if prefix else rel
+        try:
+            text = path.read_text(encoding="utf-8-sig")
+        except OSError:
+            stats.files_skipped += 1
+            continue
+        parsed = parse_localization_yml(text, expected_lang=lang)
+        stats.files_parsed += 1
+        stats.entries_read += len(parsed)
+        for key, value in parsed:
+            store[(key, lang)] = (value, source_file)
+
+    rows = [
+        (key, lang, value, source_file)
+        for (key, lang), (value, source_file) in store.items()
+    ]
+    conn = sqlite3.connect(str(db_path))
+    try:
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.executemany(
+            """
+            INSERT INTO localization (key, lang, value, source_file)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(key, lang) DO UPDATE SET
+              value = excluded.value,
+              source_file = excluded.source_file
+            """,
+            rows,
+        )
+        for _key, lang, _value, _sf in rows:
+            assert stats.by_lang is not None
+            stats.by_lang[lang] = stats.by_lang.get(lang, 0) + 1
+        stats.entries_stored = len(rows)
+
+        ensure_localization_fts(conn, rebuild=True)
+        tag = prefix or str(loc_root)
+        row = conn.execute(
+            "SELECT v FROM meta WHERE k = ?", ("loc_packs_merged",)
+        ).fetchone()
+        prev: list[str] = []
+        if row and row[0]:
+            try:
+                raw = json.loads(row[0])
+                if isinstance(raw, list):
+                    prev = [str(x) for x in raw]
+                elif isinstance(raw, str) and raw:
+                    prev = [raw]
+            except json.JSONDecodeError:
+                prev = [str(row[0])]
+        if tag and tag not in prev:
+            prev.append(tag)
+        conn.execute(
+            "INSERT INTO meta (k, v) VALUES (?, ?) "
+            "ON CONFLICT(k) DO UPDATE SET v = excluded.v",
+            ("loc_packs_merged", json.dumps(prev, ensure_ascii=False)),
+        )
+        conn.commit()
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
     finally:
         conn.close()
     return stats

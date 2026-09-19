@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>国策树出图 · 1940</title>
+  <style>
+    :root {
+      --ink: #1c2418;
+      --muted: #5a6654;
+      --line: #c5cbb8;
+      --panel: #fcfaf4;
+      --accent: #2f5d3a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Noto Sans SC", "IBM Plex Sans", sans-serif;
+      background:
+        radial-gradient(ellipse at top left, #e4edd8 0%, transparent 50%),
+        linear-gradient(180deg, #f3f0e8 0%, #e8e4d8 100%);
+      color: var(--ink);
+      min-height: 100vh;
+    }
+    header {
+      padding: 1.25rem 1.5rem 0.75rem;
+      border-bottom: 1px solid var(--line);
+    }
+    header h1 { margin: 0; font-size: 1.35rem; font-weight: 650; }
+    header p { margin: 0.35rem 0 0; color: var(--muted); font-size: 0.9rem; }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: end;
+      padding: 1rem 1.5rem;
+    }
+    label {
+      display: flex; flex-direction: column; gap: 0.25rem;
+      font-size: 0.75rem; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    input, button {
+      font: inherit; padding: 0.45rem 0.65rem;
+      border: 1px solid var(--line); border-radius: 4px;
+      background: var(--panel); color: var(--ink);
+    }
+    button {
+      background: var(--accent); color: #f5faf4;
+      border-color: var(--accent); cursor: pointer; font-weight: 600;
+    }
+    button:disabled { opacity: 0.5; cursor: wait; }
+    #status {
+      padding: 0 1.5rem 1rem; color: var(--muted);
+      font-size: 0.9rem; min-height: 1.4em;
+    }
+    #status.error { color: #8b1e1e; }
+    main { padding: 0 1.5rem 3rem; }
+    section.tree {
+      margin-bottom: 2rem;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    section.tree > .head {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 0.75rem; padding: 0.65rem 1rem;
+      border-bottom: 1px solid var(--line); background: #eef3e6;
+    }
+    section.tree > .head h2 {
+      margin: 0; font-size: 1.05rem; flex: 1; min-width: 0;
+      overflow-wrap: anywhere;
+    }
+    section.tree .head-actions,
+    .panel-card .head-actions {
+      display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center;
+      flex-shrink: 0;
+    }
+    section.tree .head-actions a.dl,
+    section.tree .head-actions button,
+    .panel-card .head-actions a.dl,
+    .panel-card .head-actions button {
+      flex-shrink: 0;
+      font: inherit; font-size: 0.8rem; font-weight: 600;
+      padding: 0.3rem 0.6rem;
+      border: 1px solid var(--accent); border-radius: 4px;
+      background: var(--accent); color: #f5faf4;
+      text-decoration: none; cursor: pointer; min-width: auto;
+    }
+    section.tree .head-actions button.secondary,
+    .panel-card .head-actions button.secondary {
+      background: var(--panel); color: var(--accent);
+    }
+    section.tree .head-actions a.dl:hover,
+    section.tree .head-actions button:hover,
+    .panel-card .head-actions a.dl:hover,
+    .panel-card .head-actions button:hover { filter: brightness(1.08); }
+    .pz-scale {
+      font-variant-numeric: tabular-nums;
+      font-size: 0.8rem; color: var(--muted); min-width: 3.2em;
+      text-align: right;
+    }
+    button.secondary {
+      background: var(--panel); color: var(--accent);
+    }
+    section.tree > .meta {
+      margin: 0; padding: 0.4rem 1rem; font-size: 0.8rem;
+      color: var(--muted); border-bottom: 1px solid var(--line);
+    }
+    .panels {
+      display: flex; flex-direction: column; gap: 0.75rem;
+      padding: 0.75rem; background: #e8ebe3;
+    }
+    .panel-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .panel-card > .head {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 0.75rem; padding: 0.55rem 0.85rem;
+      border-bottom: 1px solid var(--line); background: #f3f6ee;
+    }
+    .panel-card > .head h3 {
+      margin: 0; font-size: 0.95rem; flex: 1; min-width: 0;
+      overflow-wrap: anywhere; font-weight: 650;
+    }
+    .panel-card .meta {
+      margin: 0; padding: 0.35rem 0.85rem; font-size: 0.78rem;
+      color: var(--muted); border-bottom: 1px solid var(--line);
+    }
+    .pz-viewport {
+      position: relative;
+      height: min(56vh, 640px);
+      background: #1c242a;
+      overflow: hidden;
+      touch-action: none;
+      cursor: grab;
+      user-select: none;
+    }
+    .pz-viewport.dragging { cursor: grabbing; }
+    .pz-stage {
+      position: absolute;
+      left: 0; top: 0;
+      transform-origin: 0 0;
+      will-change: transform;
+    }
+    .pz-stage img {
+      display: block;
+      max-width: none;
+      height: auto;
+      padding: 0;
+      pointer-events: none;
+      -webkit-user-drag: none;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>国策树出图 · 1940</h1>
+    <p>按连通分量分图（≤10 合并）；布局同游戏坐标。总览 <a href="http://127.0.0.1:1939/">:1939</a>。</p>
+  </header>
+  <div class="controls">
+    <label>模组 <input id="mod" value="TFR" size="12" /></label>
+    <label>TAG <input id="tag" value="PRC" size="6" /></label>
+    <label>语言 <input id="lang" value="simp_chinese" size="14" /></label>
+    <button id="go" type="button">生成</button>
+    <button id="dlAll" class="secondary" type="button" disabled>下载全部（含整图与分图）</button>
+  </div>
+  <div id="status"></div>
+  <main id="out"></main>
+  <script src="/static/focus_panzoom.js"></script>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const modEl = document.getElementById("mod");
+    const tagEl = document.getElementById("tag");
+    const langEl = document.getElementById("lang");
+    const statusEl = document.getElementById("status");
+    const outEl = document.getElementById("out");
+    const goBtn = document.getElementById("go");
+    const dlAllBtn = document.getElementById("dlAll");
+
+    let lastTrees = [];
+
+    if (params.get("mod")) modEl.value = params.get("mod");
+    if (params.get("tag")) tagEl.value = params.get("tag");
+    if (params.get("lang")) langEl.value = params.get("lang");
+
+    function setStatus(text, isError = false) {
+      statusEl.textContent = text || "";
+      statusEl.classList.toggle("error", !!isError);
+    }
+
+    function downloadUrl(imageUrl) {
+      try {
+        const u = new URL(imageUrl, location.origin);
+        u.searchParams.set("download", "1");
+        return u.pathname + u.search;
+      } catch (_) {
+        const base = String(imageUrl || "").split("#")[0];
+        return `${base}${base.includes("?") ? "&" : "?"}download=1`;
+      }
+    }
+
+    function triggerDownload(url, filename) {
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename || "";
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+
+    function mountPanel(host, panel, bust) {
+      const card = document.createElement("article");
+      card.className = "panel-card";
+      const head = document.createElement("div");
+      head.className = "head";
+      const h3 = document.createElement("h3");
+      h3.textContent = panel.label || panel.panel_id;
+      const actions = document.createElement("div");
+      actions.className = "head-actions";
+      actions.innerHTML =
+        `<span class="pz-scale"></span>` +
+        `<button type="button" class="secondary pz-zoom-out">−</button>` +
+        `<button type="button" class="secondary pz-zoom-in">+</button>` +
+        `<button type="button" class="secondary pz-fit-height">铺高</button>` +
+        `<button type="button" class="secondary pz-fit">适应</button>`;
+      const dl = document.createElement("a");
+      dl.className = "dl";
+      dl.href = downloadUrl(panel.image_url);
+      dl.download = panel.image || "";
+      dl.textContent = "下载";
+      actions.appendChild(dl);
+      head.append(h3, actions);
+      const meta = document.createElement("p");
+      meta.className = "meta";
+      const st = panel.stats || {};
+      meta.textContent =
+        `节点 ${panel.node_count ?? st.nodes ?? "?"} · 前置 ${st.prereq_edges ?? "?"} · 互斥 ${st.mex_edges ?? "?"}`;
+      const viewport = document.createElement("div");
+      viewport.className = "pz-viewport";
+      const stage = document.createElement("div");
+      stage.className = "pz-stage";
+      const img = document.createElement("img");
+      img.alt = h3.textContent;
+      stage.appendChild(img);
+      viewport.appendChild(stage);
+      card.append(head, meta, viewport);
+      host.appendChild(card);
+      return new window.FocusPanZoom(card).load(
+        `${panel.image_url}?t=${bust}`,
+        h3.textContent
+      );
+    }
+
+    async function loadTrees() {
+      const mod = modEl.value.trim() || "TFR";
+      const tag = tagEl.value.trim() || "PRC";
+      const lang = langEl.value.trim() || "simp_chinese";
+      const q = new URLSearchParams({ mod, tag, lang });
+      history.replaceState(null, "", `?${q.toString()}`);
+
+      goBtn.disabled = true;
+      dlAllBtn.disabled = true;
+      setStatus("生成国策树图…");
+      outEl.innerHTML = "";
+      lastTrees = [];
+
+      let data;
+      try {
+        const res = await fetch(`/api/focus-trees?${q.toString()}`);
+        data = await res.json();
+        if (!data.ok) {
+          setStatus(`失败：${data.error || res.status} ${data.detail || data.hint || ""}`, true);
+          return;
+        }
+      } catch (err) {
+        setStatus(`请求失败：${err}`, true);
+        return;
+      } finally {
+        goBtn.disabled = false;
+      }
+
+      const modLabel = data.mod?.short || data.mod?.id || mod;
+      const sp = data.spacing || {};
+      setStatus(
+        `${modLabel} · ${data.tag} · ${data.matched_tree_count} 棵树` +
+        `（spacing ${sp.x}×${sp.y}）· 分图按连通分量`
+      );
+
+      lastTrees = data.trees || [];
+      dlAllBtn.disabled = lastTrees.length === 0;
+      const bust = Date.now();
+
+      for (const tree of lastTrees) {
+        const fname = tree.image || `${tree.id}.png`;
+        const sec = document.createElement("section");
+        sec.className = "tree";
+        const head = document.createElement("div");
+        head.className = "head";
+        const h2 = document.createElement("h2");
+        h2.textContent = tree.id;
+        const actions = document.createElement("div");
+        actions.className = "head-actions";
+        const dl = document.createElement("a");
+        dl.className = "dl";
+        dl.href = downloadUrl(tree.image_url);
+        dl.download = fname;
+        dl.textContent = "下载整图";
+        actions.appendChild(dl);
+        head.append(h2, actions);
+        const meta = document.createElement("p");
+        meta.className = "meta";
+        const st = tree.stats || {};
+        const comp = tree.components || {};
+        meta.textContent =
+          `${tree.path}:${tree.start_line} · 节点 ${st.nodes ?? "?"} · ` +
+          `分量 ${comp.components ?? "?"}（大 ${comp.large ?? "?"} / 小 ${comp.small ?? "?"}）`;
+        const panelsHost = document.createElement("div");
+        panelsHost.className = "panels";
+        sec.append(head, meta, panelsHost);
+        outEl.appendChild(sec);
+        const panels = tree.panels && tree.panels.length
+          ? tree.panels
+          : [{
+              panel_id: "full",
+              label: tree.id,
+              node_count: st.nodes,
+              stats: st,
+              image: tree.image,
+              image_url: tree.image_url,
+            }];
+        await Promise.all(panels.map((p) => mountPanel(panelsHost, p, bust)));
+      }
+    }
+
+    dlAllBtn.addEventListener("click", () => {
+      if (!lastTrees.length) return;
+      const jobs = [];
+      lastTrees.forEach((tree) => {
+        jobs.push({ url: downloadUrl(tree.image_url), name: tree.image });
+        (tree.panels || []).forEach((p) => {
+          if (p.image && p.image !== tree.image) {
+            jobs.push({ url: downloadUrl(p.image_url), name: p.image });
+          }
+        });
+      });
+      jobs.forEach((j, i) => {
+        window.setTimeout(() => triggerDownload(j.url, j.name), i * 350);
+      });
+    });
+
+    goBtn.addEventListener("click", loadTrees);
+    loadTrees();
+  </script>
+</body>
+</html>

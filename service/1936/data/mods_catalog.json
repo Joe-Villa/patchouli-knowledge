@@ -1,0 +1,248 @@
+{
+  "schema": "patchouli.mods_catalog.v2",
+  "workshop_app": 394360,
+  "default_workshop_root": "~/.steam/debian-installation/steamapps/workshop/content/394360",
+  "mods": [
+    {
+      "id": "699709023",
+      "short": "TGW",
+      "name": "Hearts of Iron IV: The Great War",
+      "aliases": ["TGW", "tgw", "The Great War", "一战", "一战模组"],
+      "category": "common"
+    },
+    {
+      "id": "3365515312",
+      "short": "TGWR",
+      "name": "The Great War Redux",
+      "aliases": ["TGWR", "tgwr", "Great War Redux", "GWR"],
+      "category": "common"
+    },
+    {
+      "id": "820260968",
+      "short": "Rt56",
+      "name": "The Road to 56",
+      "aliases": ["Rt56", "rt56", "Road to 56", "56之路", "56路"],
+      "category": "common"
+    },
+    {
+      "id": "3607150697",
+      "short": "DH",
+      "name": "Darkest Hour",
+      "aliases": ["DH", "dh", "Darkest Hour", "至暗时刻"],
+      "category": "common"
+    },
+    {
+      "id": "1521695605",
+      "short": "KR",
+      "name": "Kaiserreich",
+      "aliases": ["KR", "kr", "Kaiserreich", "凯撒reich", "Kaiser"],
+      "category": "common",
+      "loc_packs": ["2946487287"]
+    },
+    {
+      "id": "2076426030",
+      "short": "KX",
+      "name": "KaiserreduX",
+      "aliases": ["KX", "kx", "KaiserreduX", "Kaiserreich Redux"],
+      "category": "common"
+    },
+    {
+      "id": "3273686663",
+      "short": "WR",
+      "name": "Weltreich - The Age of Weltpolitik",
+      "aliases": ["WR", "wr", "Weltreich", "weitreish"],
+      "category": "common"
+    },
+    {
+      "id": "3258240238",
+      "short": "RCR",
+      "name": "RED CRISIS REDUX",
+      "aliases": ["RCR", "rcr", "Red Crisis", "RED CRISIS REDUX"],
+      "category": "common"
+    },
+    {
+      "id": "2815832636",
+      "short": "RF",
+      "name": "Red Flood",
+      "aliases": ["RF", "rf", "Red Flood", "赤潮"],
+      "category": "common"
+    },
+    {
+      "id": "2894079782",
+      "short": "AoI",
+      "name": "Age of Imperialism",
+      "aliases": ["AoI", "aoi", "Age of Imperialism", "帝国主义时代"],
+      "category": "common"
+    },
+    {
+      "id": "1176852112",
+      "short": "ITNOT",
+      "name": "In the Name of the Tsar",
+      "aliases": ["ITNOT", "itnot", "In the Name of the Tsar", "以沙皇之名"],
+      "category": "common"
+    },
+    {
+      "id": "1458561226",
+      "short": "CWIC",
+      "name": "Cold War Iron Curtain: A World Divided",
+      "aliases": ["CWIC", "cwic", "Iron Curtain", "冷战铁幕"],
+      "category": "common"
+    },
+    {
+      "id": "2438003901",
+      "short": "TNO",
+      "name": "The New Order: Last Days of Europe",
+      "aliases": ["TNO", "tno", "The New Order", "新秩序"],
+      "category": "common",
+      "loc_packs": ["2243912940"]
+    },
+    {
+      "id": "2781363716",
+      "short": "EIR",
+      "name": "The New Order: The East is Red",
+      "aliases": ["EIR", "eir", "East is Red", "东方红"],
+      "category": "common"
+    },
+    {
+      "id": "2204739234",
+      "short": "TWR",
+      "name": "Thousand Week Reich",
+      "aliases": ["TWR", "twr", "Thousand Week Reich", "千周帝国"],
+      "category": "common"
+    },
+    {
+      "id": "3140007420",
+      "short": "MITHC",
+      "name": "Man in the High Castle",
+      "aliases": ["MITHC", "mithc", "Man in the High Castle", "高堡奇人"],
+      "category": "common"
+    },
+    {
+      "id": "3269366301",
+      "short": "KK",
+      "name": "Kalterkrieg",
+      "aliases": ["KK", "kk", "Kalterkrieg", "Shadow of the Second Weltkrieg"],
+      "category": "common"
+    },
+    {
+      "id": "3539485223",
+      "short": "EGD",
+      "name": "Eternal Golden Dawn - dev",
+      "aliases": ["EGD", "egd", "Eternal Golden Dawn", "永恒黄金黎明"],
+      "category": "common"
+    },
+    {
+      "id": "2777392649",
+      "short": "MD",
+      "name": "Millennium Dawn: A Modern Day Mod",
+      "aliases": ["MD", "md", "Millennium Dawn", "千禧黎明"],
+      "category": "common"
+    },
+    {
+      "id": "2785415140",
+      "short": "TNONM",
+      "name": "The New Order: A New Millennium DEMO",
+      "aliases": ["TNONM", "tnonm", "New Millennium", "新秩序新千禧"],
+      "category": "common"
+    },
+    {
+      "id": "2981091612",
+      "short": "EU",
+      "name": "Extremis Ultimis Demo: The Death of Democracy",
+      "aliases": ["EU", "eu", "Extremis Ultimis", "极端终点"],
+      "category": "common",
+      "loc_packs": ["3505153934"]
+    },
+    {
+      "id": "3350890356",
+      "short": "TFR",
+      "name": "The Fire Rises",
+      "aliases": ["TFR", "tfr", "The Fire Rises", "烈焰升腾"],
+      "category": "common"
+    },
+    {
+      "id": "3504418504",
+      "short": "QLTY",
+      "name": "潜龙腾渊",
+      "aliases": ["QLTY", "qlty", "潜龙腾渊"],
+      "category": "common"
+    },
+    {
+      "id": "3452890784",
+      "short": "TSR",
+      "name": "The Sakiko Rises",
+      "aliases": ["TSR", "tsr", "The Sakiko Rises", "Sakiko"],
+      "category": "common"
+    },
+    {
+      "id": "2789362885",
+      "short": "NEA",
+      "name": "New East Asia: History of China 1936-1950",
+      "aliases": ["NEA", "nea", "New East Asia", "新东亚"],
+      "category": "common"
+    },
+    {
+      "id": "2828712151",
+      "short": "EYWR",
+      "name": "Eight Years' War of Resistance",
+      "aliases": ["EYWR", "eywr", "八抗", "八年抗战"],
+      "category": "common"
+    },
+    {
+      "id": "2879371758",
+      "short": "AH",
+      "name": "Adorable heart",
+      "aliases": ["AH", "ah", "Adorable heart", "钢铁萌心"],
+      "category": "common"
+    },
+    {
+      "id": "2792132018",
+      "short": "PB",
+      "name": "Pax Britannica: An Imperial Timeline",
+      "aliases": ["PB", "pb", "Pax Britannica", "英式和平"],
+      "category": "common"
+    },
+    {
+      "id": "1137372539",
+      "short": "BICE",
+      "name": "BlackICE Historical Immersion Mod",
+      "aliases": ["BICE", "bice", "BlackICE", "Black ICE"],
+      "category": "common"
+    },
+    {
+      "id": "2265420196",
+      "short": "OWB",
+      "name": "Old World Blues",
+      "aliases": ["OWB", "owb", "Old World Blues"],
+      "category": "common"
+    },
+    {
+      "id": "1826643372",
+      "short": "EaW",
+      "name": "Equestria at War",
+      "aliases": ["EaW", "eaw", "Equestria at War"],
+      "category": "common"
+    },
+    {
+      "id": "1827273767",
+      "short": "NV",
+      "name": "Novum Vexillum",
+      "aliases": ["NV", "nv", "Novum Vexillum"],
+      "category": "common"
+    },
+    {
+      "id": "2197593000",
+      "short": "NW",
+      "name": "New Ways Alpha",
+      "aliases": ["NW", "nw", "New Ways"],
+      "category": "common"
+    },
+    {
+      "id": "3206158781",
+      "short": "DX",
+      "name": "帝国雄心（重置/世界线）",
+      "aliases": ["DX", "dx", "帝国雄心"],
+      "category": "common"
+    }
+  ]
+}

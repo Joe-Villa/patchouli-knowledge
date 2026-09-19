@@ -1,0 +1,45 @@
+# Interwar 官网：独立镜像，公网 TCP 1910
+# 构建：docker compose -f deploy/docker-compose.yml build interwar
+# 启动：docker compose -f deploy/docker-compose.yml up -d interwar
+# 与其它服务互不依赖；derived 卷只读挂载。
+
+FROM python:3.12-slim-bookworm
+
+RUN set -eux; \
+    if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
+      sed -i 's|deb.debian.org|mirrors.cloud.tencent.com|g; s|security.debian.org|mirrors.cloud.tencent.com|g' \
+        /etc/apt/sources.list.d/debian.sources; \
+    fi; \
+    if [ -f /etc/apt/sources.list ]; then \
+      sed -i 's|deb.debian.org|mirrors.cloud.tencent.com|g; s|security.debian.org|mirrors.cloud.tencent.com|g' \
+        /etc/apt/sources.list; \
+    fi; \
+    apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates tini \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY service/1910/requirements.txt /tmp/interwar-requirements.txt
+RUN pip install --no-cache-dir \
+      -i https://mirrors.cloud.tencent.com/pypi/simple \
+      --trusted-host mirrors.cloud.tencent.com \
+      -r /tmp/interwar-requirements.txt \
+    && rm /tmp/interwar-requirements.txt
+
+COPY service/1910/__init__.py service/1910/__main__.py service/1910/app.py service/1910/paths.py /app/service/1910/
+COPY service/1910/static /app/service/1910/static
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app/service/1910 \
+    INTERWAR_HOST=0.0.0.0 \
+    INTERWAR_PORT=1910 \
+    INTERWAR_DERIVED=/data/1910
+
+WORKDIR /app/service/1910
+
+EXPOSE 1910
+
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["python3", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "1910"]

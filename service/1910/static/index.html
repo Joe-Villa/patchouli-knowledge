@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Interwar 1910–1960</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Source+Han+Sans+SC:wght@400;600&family=Noto+Sans+SC:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #1c1612;
+      --muted: #6b5e52;
+      --line: #c9b79a;
+      --paper: #f4ead6;
+      --card: #fff8ea;
+      --accent: #7a2e24;
+      --safe-top: env(safe-area-inset-top, 0px);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      color: var(--ink);
+      font-family: "Noto Sans SC", "Source Han Sans SC", system-ui, sans-serif;
+      background:
+        radial-gradient(900px 400px at 0% 0%, #efe2c4 0%, transparent 50%),
+        linear-gradient(180deg, #efe4cc 0%, #e6d7b8 100%);
+      line-height: 1.55;
+    }
+    header {
+      position: sticky; top: 0; z-index: 5;
+      background: rgba(244, 234, 214, 0.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--line);
+      padding: calc(0.7rem + var(--safe-top)) 1.2rem 0.7rem;
+    }
+    .head {
+      max-width: 1120px; margin: 0 auto;
+      display: flex; flex-wrap: wrap; gap: 0.75rem 1.25rem;
+      align-items: baseline; justify-content: space-between;
+    }
+    h1 {
+      margin: 0;
+      font-family: "Cormorant Garamond", Georgia, serif;
+      font-weight: 600; font-size: clamp(1.6rem, 4vw, 2.3rem);
+      letter-spacing: 0.03em;
+    }
+    h1 span { color: var(--accent); font-style: italic; }
+    nav { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+    nav button {
+      border: 1px solid var(--line); background: transparent;
+      color: var(--ink); padding: 0.35rem 0.75rem; border-radius: 999px;
+      cursor: pointer; font: inherit; font-size: 0.92rem;
+    }
+    nav button.active { background: var(--accent); color: #fff8ea; border-color: var(--accent); }
+    main { max-width: 1320px; margin: 0 auto; padding: 1.25rem 1.2rem 3rem; }
+    section { display: none; }
+    section.active { display: block; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 1rem 1.15rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 10px 24px rgba(28, 22, 18, 0.06);
+    }
+    h2 {
+      font-family: "Cormorant Garamond", Georgia, serif;
+      font-size: 1.55rem; margin: 0 0 0.6rem; font-weight: 600;
+    }
+    h3 { margin: 0.2rem 0 0.4rem; font-size: 1.05rem; }
+    .muted { color: var(--muted); }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.7rem; }
+    .stat { background: #f7efe0; border-radius: 8px; padding: 0.7rem 0.8rem; }
+    .stat b { display: block; font-size: 1.35rem; font-family: "Cormorant Garamond", serif; }
+    ul.plain { margin: 0; padding-left: 1.15rem; }
+    .workshop :is(h2,h3) { font-family: "Cormorant Garamond", serif; }
+    .workshop p { margin: 0.5rem 0; }
+    .quote {
+      border-left: 3px solid var(--accent);
+      padding: 0.4rem 0.8rem; margin: 0.6rem 0;
+      background: #f7efe0;
+    }
+    .obj { margin-top: 1rem; }
+    .obj:first-child { margin-top: 0; }
+    .tags { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+    .chip {
+      border: 1px solid var(--line); border-radius: 8px;
+      padding: 0.35rem 0.6rem; background: #fff; cursor: pointer; font: inherit;
+    }
+    .chip:hover, .chip.active { border-color: var(--accent); color: var(--accent); }
+    .nations-grid {
+      display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr);
+      gap: 1rem; align-items: start;
+    }
+    @media (max-width: 860px) {
+      .nations-grid { grid-template-columns: 1fr; }
+    }
+    .world-stack {
+      display: flex; flex-direction: column; gap: 1rem;
+    }
+    .world-stack .map-card {
+      padding: 0; overflow: hidden;
+    }
+    #map-wrap {
+      position: relative; overflow: hidden;
+      width: 100%;
+      height: min(85vh, 980px);
+      min-height: 420px;
+      background: #111; border-radius: 10px; cursor: grab; border: 1px solid #3a342c;
+    }
+    #map-wrap.dragging { cursor: grabbing; }
+    canvas#display { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+    #dossier { min-height: 8rem; }
+    #dossier .empty, #nation-detail .empty { color: var(--muted); }
+    .res { display: flex; justify-content: space-between; gap: 0.5rem; font-size: 0.92rem; }
+    .laws {
+      display: grid; grid-template-columns: 1fr; gap: 0.55rem;
+      max-height: 420px; overflow: auto; font-size: 0.9rem;
+    }
+    .techs {
+      display: grid; grid-template-columns: 1fr; gap: 0.55rem;
+      max-height: 360px; overflow: auto; font-size: 0.9rem;
+    }
+    @media (min-width: 520px) {
+      .laws { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .techs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    .laws .cat-block.laws-other { grid-column: 1 / -1; }
+    .law-default, .law-undefined { color: #b00020; }
+    .map-hint {
+      margin: 0;
+      padding: 0.9rem 1.15rem 0.85rem;
+      font-size: clamp(1.15rem, 2.4vw, 1.45rem);
+      font-weight: 650;
+      line-height: 1.35;
+      color: #fff8ea;
+      background: var(--accent);
+      border-bottom: 1px solid #5c1f18;
+      letter-spacing: 0.02em;
+      text-align: center;
+    }
+    .cat-block {
+      margin: 0; padding: 0.55rem 0.65rem;
+      border: 1px solid #c9bda8; border-radius: 8px;
+      background: rgba(255, 252, 245, 0.72);
+      min-height: 4.5rem;
+    }
+    .cat-block h4 {
+      margin: 0 0 0.35rem; font-size: 0.88rem; color: var(--ink);
+      font-weight: 650; letter-spacing: 0.02em;
+    }
+    .cat-block ul { margin: 0; padding-left: 1.1rem; }
+    .cat-block .empty-cat { color: var(--muted); list-style: none; padding-left: 0; }
+    .era-block { margin: 0.45rem 0 0.25rem; }
+    .era-block:first-child { margin-top: 0; }
+    .era-head {
+      display: flex; justify-content: space-between; gap: 0.5rem; align-items: baseline;
+      font-size: 0.82rem; color: var(--muted); margin-bottom: 0.15rem;
+    }
+    .era-head b { color: var(--ink); font-weight: 600; }
+    .era-miss { white-space: nowrap; }
+    .era-block ul { margin: 0; padding-left: 1.05rem; }
+    .flavor-missing { color: var(--muted); font-style: italic; }
+    .wl-summary-bar {
+      margin: 0 0 1rem;
+      font-size: clamp(1.05rem, 2vw, 1.25rem);
+      font-weight: 650;
+    }
+    .wl-summary-bar b {
+      font-family: "Cormorant Garamond", Georgia, serif;
+      font-size: 1.35em; color: var(--accent);
+    }
+    .wl-layout {
+      display: grid;
+      grid-template-columns: minmax(200px, 0.85fr) minmax(0, 1.4fr);
+      gap: 1rem;
+      align-items: start;
+    }
+    @media (max-width: 720px) {
+      .wl-layout { grid-template-columns: 1fr; }
+    }
+    .wl-list {
+      display: flex; flex-direction: column; gap: 0.45rem;
+    }
+    .wl-item {
+      margin: 0; cursor: pointer; user-select: none;
+      padding: 0.7rem 0.85rem;
+      text-align: left; width: 100%;
+      font: inherit; color: inherit;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+    .wl-item:hover { border-color: var(--accent); }
+    .wl-item.active {
+      border-color: var(--accent);
+      background: #f3e6d4;
+    }
+    .wl-item h3 {
+      margin: 0; font-size: 1.02rem; font-weight: 600;
+    }
+    .wl-detail-panel .empty { color: var(--muted); margin: 0; }
+    .wl-detail-panel h2 { margin-bottom: 0.45rem; }
+    .wl-detail-panel .enter { font-size: 0.95rem; margin: 0 0 0.7rem; }
+    .wl-detail-panel .desc {
+      white-space: pre-wrap; font-size: 0.95rem; color: #3d342c;
+      max-height: min(60vh, 28em); overflow: auto;
+    }
+    img.thumb { width: min(220px, 40vw); border-radius: 8px; float: right; margin: 0 0 0.8rem 1rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="head">
+      <h1>Interwar <span>1910–1960</span></h1>
+      <nav>
+        <button data-tab="intro" class="active">介绍</button>
+        <button data-tab="nations">推荐国家</button>
+        <button data-tab="world">世界局势</button>
+        <button data-tab="worldlines">世界线</button>
+        <button data-tab="guides">游玩攻略</button>
+      </nav>
+    </div>
+  </header>
+  <main>
+    <section id="intro" class="active"></section>
+    <section id="nations"></section>
+    <section id="world"></section>
+    <section id="worldlines"></section>
+    <section id="guides"></section>
+  </main>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const fmt = (n) => (n == null ? "—" : Number(n).toLocaleString("zh-CN"));
+    let site = null, dossiers = {}, provinces = {}, mapCountries = {};
+    let imgW = 0, imgH = 0, scale = 1, ox = 0, oy = 0;
+    let hitCanvas, hitCtx, display, dctx;
+    let dragging = false, moved = false, lastX = 0, lastY = 0;
+    let ownImg;
+
+    document.querySelectorAll("nav button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("nav button").forEach((b) => b.classList.remove("active"));
+        document.querySelectorAll("main > section").forEach((s) => s.classList.remove("active"));
+        btn.classList.add("active");
+        $(btn.dataset.tab).classList.add("active");
+        if (btn.dataset.tab === "world") requestAnimationFrame(fitMap);
+      });
+    });
+
+    function rgbToKey(r, g, b) {
+      return "#" + [r, g, b].map((c) => c.toString(16).padStart(2, "0")).join("");
+    }
+    function screenToImage(sx, sy) {
+      const rect = display.getBoundingClientRect();
+      return {
+        x: Math.floor((sx - rect.left - ox) / scale),
+        y: Math.floor((sy - rect.top - oy) / scale),
+      };
+    }
+    function drawMap() {
+      if (!display || !imgW || !dctx || !ownImg) return;
+      dctx.fillStyle = "#111";
+      dctx.fillRect(0, 0, display.width, display.height);
+      dctx.imageSmoothingEnabled = false;
+      dctx.drawImage(ownImg, ox, oy, imgW * scale, imgH * scale);
+    }
+    function fitMap() {
+      if (!display || !imgW) return;
+      const wrap = $("map-wrap");
+      const w = (wrap && wrap.clientWidth) || display.clientWidth;
+      const h = (wrap && wrap.clientHeight) || display.clientHeight;
+      if (!w || !h) return;
+      display.width = w;
+      display.height = h;
+      scale = Math.min(w / imgW, h / imgH);
+      ox = (w - imgW * scale) / 2;
+      oy = (h - imgH * scale) / 2;
+      drawMap();
+    }
+    function lookupTag(sx, sy) {
+      const { x, y } = screenToImage(sx, sy);
+      if (x < 0 || y < 0 || x >= imgW || y >= imgH) return null;
+      const [r, g, b] = hitCtx.getImageData(x, y, 1, 1).data;
+      return provinces[rgbToKey(r, g, b)] || null;
+    }
+    function renderLawGroups(groups, emptyLabel) {
+      if (!groups || !groups.length) return `<p class="muted">${emptyLabel}</p>`;
+      return groups.map((g) => {
+        const items = g.items || [];
+        const isOther = g.id === "other";
+        const lis = items.length
+          ? items.map((it) => {
+              const am = (it.amendments || []).map((a) => a.name || a).join("、");
+              if (it.undefined) {
+                const prefix = it.group_name ? `${it.group_name}：` : "";
+                return `<li>${prefix}<span class="law-undefined">未定义</span></li>`;
+              }
+              if (it.is_default) {
+                return `<li><span class="law-default">${it.name}（默认）</span></li>`;
+              }
+              const label = isOther && it.group_name
+                ? `${it.group_name}：${it.name}`
+                : it.name;
+              return `<li>${label}${am ? "（" + am + "）" : ""}</li>`;
+            }).join("")
+          : `<li class="empty-cat">无</li>`;
+        const cls = isOther ? "cat-block laws-other" : "cat-block";
+        return `<div class="${cls}"><h4>${g.name}</h4><ul>${lis}</ul></div>`;
+      }).join("");
+    }
+
+    function renderTechGroups(groups, emptyLabel) {
+      if (!groups || !groups.length) return `<p class="muted">${emptyLabel}</p>`;
+      return groups.map((g) => {
+        const eras = g.eras || [];
+        let body;
+        if (eras.length) {
+          body = eras.map((era) => {
+            const items = era.items || [];
+            const lis = items.length
+              ? items.map((it) => `<li>${it.name}</li>`).join("")
+              : `<li class="empty-cat">无</li>`;
+            return `<div class="era-block">
+              <div class="era-head"><b>${era.name}</b></div>
+              <ul>${lis}</ul>
+            </div>`;
+          }).join("");
+        } else {
+          body = `<ul><li class="empty-cat">无</li></ul>`;
+        }
+        return `<div class="cat-block"><h4>${g.name}</h4>${body}</div>`;
+      }).join("");
+    }
+
+    function flavorHtml(text) {
+      if (text && String(text).trim()) {
+        return `<p>${String(text).replaceAll("\n", "<br>")}</p>`;
+      }
+      return `<p class="flavor-missing">该国没有 flavor text。</p>`;
+    }
+
+    function showCountry(tag) {
+      const box = $("dossier");
+      if (!box) return;
+      const d = dossiers[tag];
+      if (!d) {
+        box.innerHTML = `<p class="empty">未找到 ${tag} 的开局档案。</p>`;
+        return;
+      }
+      const res = (d.resources || []).map((r) =>
+        `<div class="res"><span>${r.name}</span><b>${fmt(r.amount)}</b></div>`
+      ).join("") || `<p class="muted">无</p>`;
+      const lawHtml = renderLawGroups(d.law_groups, "无开局法律");
+      const techHtml = renderTechGroups(d.tech_groups, "无开局科技");
+      box.innerHTML = `
+        <h2>${d.name} <span class="muted">${d.tag}</span></h2>
+        ${flavorHtml(d.flavor)}
+        <div class="stats">
+          <div class="stat"><span class="muted">总人口</span><b>${fmt(d.population)}</b></div>
+          <div class="stat"><span class="muted">建筑等级</span><b>${fmt(d.building_levels)}</b></div>
+          <div class="stat"><span class="muted">耕地</span><b>${fmt(d.arable_land)}</b></div>
+        </div>
+        <h3>资源</h3>${res}
+        <h3>开局法律</h3><div class="laws">${lawHtml}</div>
+        <h3>开局科技</h3><div class="techs">${techHtml}</div>
+      `;
+    }
+
+    function bindMap() {
+      const wrap = $("map-wrap");
+      display = $("display");
+      if (!wrap || !display) return;
+      dctx = display.getContext("2d");
+      wrap.addEventListener("mousedown", (e) => {
+        dragging = true; moved = false; lastX = e.clientX; lastY = e.clientY;
+        wrap.classList.add("dragging");
+      });
+      window.addEventListener("mouseup", (e) => {
+        if (dragging && !moved) {
+          const tag = lookupTag(e.clientX, e.clientY);
+          if (tag) showCountry(tag);
+        }
+        dragging = false; wrap.classList.remove("dragging");
+      });
+      window.addEventListener("mousemove", (e) => {
+        if (!dragging) return;
+        const dx = e.clientX - lastX, dy = e.clientY - lastY;
+        if (Math.abs(dx) + Math.abs(dy) > 3) moved = true;
+        ox += dx; oy += dy; lastX = e.clientX; lastY = e.clientY;
+        drawMap();
+      });
+      wrap.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        const { x, y } = screenToImage(e.clientX, e.clientY);
+        const next = Math.min(8, Math.max(0.2, scale * (e.deltaY < 0 ? 1.12 : 0.9)));
+        ox = e.clientX - wrap.getBoundingClientRect().left - x * next;
+        oy = e.clientY - wrap.getBoundingClientRect().top - y * next;
+        scale = next;
+        drawMap();
+      }, { passive: false });
+      window.addEventListener("resize", () => { display.width = 0; fitMap(); });
+    }
+
+    async function loadImage(url) {
+      const img = new Image();
+      img.src = url;
+      await img.decode();
+      return img;
+    }
+
+    function renderIntro(intro) {
+      const contacts = (intro.contacts || []).map((c) => `<li>${c.text}</li>`).join("");
+      const fused = (intro.fused_mods || []).map((n) => `<li>${n}</li>`).join("");
+      const blds = (intro.buildings || []).map((b) => `<li>${b.name}</li>`).join("");
+      const reviews = (intro.reviews || []).map((r) =>
+        `<blockquote class="quote">${r.text}</blockquote>`
+      ).join("") || `<p class="muted">暂未筛到足够清晰的评论。</p>`;
+      $("intro").innerHTML = `
+        <div class="card">
+          <img class="thumb" src="/map/thumbnail.png" alt="" onerror="this.remove()" />
+          <h2>${intro.name}</h2>
+          <p class="muted">作者 ${intro.author || ""}</p>
+          <div class="stats">
+            <div class="stat"><span class="muted">历史事件</span><b>${fmt(intro.events)}</b></div>
+            <div class="stat"><span class="muted">历史人物</span><b>${fmt(intro.characters)}</b></div>
+            <div class="stat"><span class="muted">本地化条目</span><b>${fmt(intro.loc_keys)}</b></div>
+          </div>
+        </div>
+        <div class="card"><h2>联系作者</h2><ul class="plain">${contacts}</ul></div>
+        <div class="card"><h2>融合的模组</h2><ul class="plain">${fused}</ul></div>
+        <div class="card"><h2>新增建筑</h2><ul class="plain">${blds}</ul></div>
+        <div class="card workshop"><h2>世界局势</h2>${intro.workshop_html || ""}</div>
+        <div class="card"><h2>工坊评论</h2>${reviews}</div>
+      `;
+    }
+
+    function renderNations(world) {
+      const groups = (world.objectives || []).map((g, gi) => {
+        const chips = g.countries.map((c, ci) =>
+          `<button class="chip" data-g="${gi}" data-c="${ci}">${c.name || c.tag}</button>`
+        ).join("");
+        return `<div class="obj"><h3>${g.name}</h3><p class="muted">${(g.desc || "").replaceAll("\n", "<br>")}</p><div class="tags">${chips}</div></div>`;
+      }).join("");
+      $("nations").innerHTML = `
+        <div class="nations-grid">
+          <div class="card"><h2>推荐国家</h2>${groups}</div>
+          <div class="card" id="nation-detail"><p class="empty">点选左侧国家，查看该推荐条目的风味介绍。</p></div>
+        </div>
+      `;
+      const detail = $("nation-detail");
+      $("nations").querySelectorAll(".chip").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          $("nations").querySelectorAll(".chip").forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          const g = world.objectives[Number(btn.dataset.g)];
+          const c = g.countries[Number(btn.dataset.c)];
+          detail.innerHTML = `
+            <h2>${c.name || c.tag} <span class="muted">${c.tag}</span></h2>
+            <p class="muted">${g.name}</p>
+            ${c.flavor && String(c.flavor).trim()
+              ? `<p>${String(c.flavor).replaceAll("\n", "<br>")}</p>`
+              : `<p class="flavor-missing">该国没有 flavor text。</p>`}
+          `;
+        });
+      });
+    }
+
+    function renderWorld(world) {
+      $("world").innerHTML = `
+        <div class="card">
+          <h2>开局</h2>
+          <div class="stats">
+            <div class="stat"><span class="muted">开始时间</span><b>${world.start_date}</b></div>
+            <div class="stat"><span class="muted">开局国家</span><b>${fmt(world.country_count)}</b></div>
+          </div>
+        </div>
+        <div class="world-stack">
+          <div class="card map-card">
+            <p class="map-hint">点击地图上的国家，可在下方查看该国开局详细信息。</p>
+            <div id="map-wrap"><canvas id="display"></canvas></div>
+          </div>
+          <div class="card" id="dossier"><p class="empty">尚未选择国家。点击上方地图中的国家后，这里会显示开局档案（不展示省份信息）。</p></div>
+        </div>
+      `;
+      bindMap();
+    }
+
+    function renderWorldlines(guides) {
+      const list = guides.worldlines || [];
+      const box = $("worldlines");
+      if (!list.length) {
+        box.innerHTML = `<div class="card muted">暂无世界线数据。</div>`;
+        return;
+      }
+      const items = list.map((w, i) => `
+        <button type="button" class="wl-item card" data-wl="${i}" aria-pressed="false">
+          <h3>${w.name} <span class="muted">${w.id}</span></h3>
+        </button>`).join("");
+      box.innerHTML = `
+        <p class="wl-summary-bar">当前共有 <b>${list.length}</b> 条世界线</p>
+        <div class="wl-layout">
+          <div class="wl-list">${items}</div>
+          <div class="card wl-detail-panel" id="wl-detail">
+            <p class="empty">请从左侧选择一条世界线查看进入条件与说明。</p>
+          </div>
+        </div>
+      `;
+      const detail = $("wl-detail");
+      const show = (idx) => {
+        const w = list[idx];
+        if (!w || !detail) return;
+        box.querySelectorAll(".wl-item").forEach((el, i) => {
+          const on = i === idx;
+          el.classList.toggle("active", on);
+          el.setAttribute("aria-pressed", on ? "true" : "false");
+        });
+        detail.innerHTML = `
+          <h2>${w.name} <span class="muted">${w.id}</span></h2>
+          <p class="enter"><strong>进入条件：</strong>${w.enter || "—"}</p>
+          <div class="desc">${(w.desc || "暂无说明。").replaceAll("\n", "<br>")}</div>
+        `;
+      };
+      box.querySelectorAll(".wl-item").forEach((el) => {
+        el.addEventListener("click", () => show(Number(el.dataset.wl)));
+      });
+    }
+
+    function renderGuides(guides) {
+      const tips = (guides.tips || []).map((t) =>
+        `<div class="card"><h3>${t.title}</h3><p>${t.body}</p></div>`
+      ).join("");
+      $("guides").innerHTML = tips || `<div class="card muted">暂无攻略。</div>`;
+    }
+
+    async function boot() {
+      const [siteRes, ctryRes] = await Promise.all([
+        fetch("/api/site.json"),
+        fetch("/api/countries.json"),
+      ]);
+      site = await siteRes.json();
+      dossiers = await ctryRes.json();
+      renderIntro(site.intro || {});
+      renderNations(site.world || {});
+      renderWorld(site.world || {});
+      renderWorldlines(site.guides || {});
+      renderGuides(site.guides || {});
+      const [hitImg, own] = await Promise.all([
+        loadImage("/map/provinces.png"),
+        loadImage("/map/ownership.png"),
+      ]);
+      ownImg = own;
+      imgW = hitImg.naturalWidth;
+      imgH = hitImg.naturalHeight;
+      hitCanvas = document.createElement("canvas");
+      hitCanvas.width = imgW;
+      hitCanvas.height = imgH;
+      hitCtx = hitCanvas.getContext("2d", { willReadFrequently: true });
+      hitCtx.drawImage(hitImg, 0, 0);
+      const [pj, cj] = await Promise.all([
+        fetch("/map/provinces.json").then((r) => r.json()),
+        fetch("/map/countries.json").then((r) => r.json()),
+      ]);
+      provinces = pj;
+      mapCountries = cj;
+      fitMap();
+    }
+    boot().catch((err) => {
+      $("intro").innerHTML = `<div class="card">加载失败：${err}</div>`;
+    });
+  </script>
+</body>
+</html>

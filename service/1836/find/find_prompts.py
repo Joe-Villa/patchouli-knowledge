@@ -21,6 +21,7 @@ route_query / loc_search 若返回 query_aliases 或 hints：必须优先按其 
 5. 证据够答 → coverage=sufficient。
 6. 轮次有限：尽快收敛；找到主实体定义后不要无意义重复 grep。
    连续多次 grep 空命中必须换目录/工具（route prefer、aliases、read_lines），禁止同模式空转。
+   grep_text 必须带顶层目录 glob；禁止裸 **/*.txt。
 7. read_block 的 path 必须相对 game/（如 common/ideologies/01_character_ideologies.txt）。
 8. events 注册表常只给文件名：优先用返回的 path，否则 grep_text。
 9. 结束必须调用 submit_evidence_package；不要只用纯文本说「找完了」。

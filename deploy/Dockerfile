@@ -17,6 +17,7 @@ RUN set -eux; \
     && apt-get install -y --no-install-recommends \
         bubblewrap \
         ca-certificates \
+        ripgrep \
         tini \
         util-linux \
     && rm -rf /var/lib/apt/lists/*
@@ -33,10 +34,16 @@ RUN pip install --no-cache-dir \
 COPY service/1836 /app/service/1836
 COPY tool /app/tool
 COPY common /app/common
+# 运行时 shim（localization_db / common_registry）依赖的最小 ingest 子集
+COPY ingest/_pathsetup.py /app/ingest/_pathsetup.py
+COPY ingest/_lib /app/ingest/_lib
+COPY ingest/common_registry /app/ingest/common_registry
 COPY deploy/patchouli.request.toml /app/service/1836/patchouli.request.toml
 COPY deploy/entrypoint.web.sh /entrypoint.sh
 
+# 本机 data/game|mods 常为指向 database 的 symlink；镜像内去掉后建空目录，由卷挂载覆盖
 RUN chmod +x /entrypoint.sh \
+    && rm -rf /app/service/1836/data/game /app/service/1836/data/mods \
     && mkdir -p \
         /app/service/1836/data/game \
         /app/service/1836/data/mods \

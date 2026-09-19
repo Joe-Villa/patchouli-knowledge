@@ -1,7 +1,6 @@
-# 原则：镜像 / 服务器只含运行服务必要内容。
-# 排除：ingest、文档、数据、脚本实验包、备份、日志、venv。
-# 保留：各服务源码、tool/、common/、deploy 配置与 requirements、
-#       archive/和QQ的通信管线（qqbot）、欢迎页 assets。
+# 原则：镜像只含运行服务必要内容。
+# 排除：ingest、文档、数据、脚本实验包、备份、日志、venv、archive。
+# 保留：各服务源码、tool/、common/、deploy 配置与 requirements、欢迎页 assets。
 
 # VCS
 .git
@@ -41,11 +40,16 @@
 # 数据（运行时卷挂载，不进镜像）
 /database/
 /data_other/
-/archive/old/
+/archive/
 /thumbnail.png
 
-# 非运行时：加工脚本、人读文档、实验包、一次性脚本
-/ingest/
+# 非运行时：加工脚本（保留 web 运行时 shim 依赖的 _lib / common_registry）
+/ingest/**
+!/ingest/_lib/
+!/ingest/_lib/**
+!/ingest/_pathsetup.py
+!/ingest/common_registry/
+!/ingest/common_registry/**
 /file/
 /TODO
 /out/
@@ -53,7 +57,6 @@ service/1836/问答包/
 service/1837/out/
 service/1837/scripts/
 service/1838/scripts/
-archive/和QQ的通信管线/scripts/
 deploy/welcome/
 
 # 人读文档（Agent 规则 .txt / structure.md 保留）

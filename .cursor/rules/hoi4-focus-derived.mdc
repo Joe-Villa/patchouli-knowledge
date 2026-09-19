@@ -1,0 +1,22 @@
+---
+description: HOI4 国策树是剧情主轴；查路线/内战/开战先用 focus 工具与 derived
+globs:
+  - database/derived/focus/**
+  - tool/focus_topology/**
+  - ingest/focus_corpus/**
+  - service/1939/**
+  - service/1940/**
+  - service/1936/find/**
+  - tool/_script_find/**
+alwaysApply: false
+---
+
+# HOI4 国策 = 剧情主轴
+
+HOI4 剧情、路线、政治分支几乎都挂在 `focus_tree` / `shared_focus` 上。
+问「怎么走 / 内战 / 开战 / 变线」时：先 `focus_tree_catalog` → `focus_topology` → `focus_derived(action=tree)`，再 `read_block`；不要先盲搜 events。
+
+预解析：`database/derived/focus/<mod_short>/`（见 `tool/focus_topology/DERIVED.md`）。
+未构建则提示 `python ingest/focus_corpus/build_focus_corpus.py --mod <short>`，不要擅自全量解析。
+
+人读总览出图：欢迎页「HOI4 国策树」→ `:1939`。
