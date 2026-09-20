@@ -1,5 +1,5 @@
-# 原则：只追踪程序不可再生的内容（源码、Agent 规则、requirements / example 配置）。
-# 不追踪：数据、文档、虚拟环境、日志、会话、可重建产物。
+# 原则：只追踪源码、Agent 规则、requirements、开源文档与 *.example 配置。
+# 不追踪：语料 database/、日志 log/、私人文档 file/、venv、会话、可重建产物。
 
 # --- secrets（保留 *.example）---
 .env
@@ -50,15 +50,25 @@ service/1836/data/re
 **/instances/*/sessions/
 **/instances/*/logs/
 
-# --- 文档 / 人读笔记（非程序输入）---
+# --- 私人文档（旁白 / 笔记；不进仓库）---
 /file/
 /TODO
-**/README.md
-**/README
-**/USAGE.md
-**/DIFFERENCES.md
-tool/**/README.md
 /thumbnail.png
+# 开源文档在仓库根 README.md 与 docs/、examples/（见下方白名单）
+# 服务内实验性说明仍忽略
+service/**/README.md
+service/**/README
+service/**/USAGE.md
+service/**/DIFFERENCES.md
+tool/**/README.md
+tool/**/README
+
+# --- 开源文档白名单（覆盖上方 service/tool 的 README 忽略不影响根目录）---
+!/README.md
+!/docs/
+!/docs/**
+!/examples/
+!/examples/**
 
 # --- 生成物 / 实验输出 ---
 /out/

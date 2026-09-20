@@ -1,0 +1,78 @@
+{
+  "schema": "patchouli.localization_assoc.v1",
+  "notes": [
+    "关联是约定拼 key，不是任意子串语义",
+    "库内 value 一律原样（含 $REF$）；展开只在使用时按 dollar_ref 等规则做，不入库预展开",
+    "正向：script/实体 key → 候选 loc keys → value（使用时可再展开 $REF$）",
+    "反向：人话/文案 → 近似匹配 loc value（原样串）→ key → 再挂回实体",
+    "脚本作用域前缀 s:/c:/ig: 等查 loc 前应剥掉"
+  ],
+  "modes": [
+    {
+      "id": "exact",
+      "direction": ["forward", "reverse"],
+      "rule": "loc.key == entity_key",
+      "examples": ["building_food_industry", "STATE_SVEALAND", "law_technocracy"]
+    },
+    {
+      "id": "script_scope_strip",
+      "direction": ["forward"],
+      "rule": "剥掉 s: / c: / ig: / p: 等前缀后再 exact",
+      "examples": ["s:STATE_SVEALAND → STATE_SVEALAND"]
+    },
+    {
+      "id": "event_suffix",
+      "direction": ["forward"],
+      "template": "{event_id}.{suffix}",
+      "suffixes": ["t", "d", "f", "a", "b", "c", "e", "g", "h", "i"],
+      "examples": ["1848.1 → 1848.1.t / .d / .f / .a"]
+    },
+    {
+      "id": "hub_name",
+      "direction": ["forward", "reverse"],
+      "template": "HUB_NAME_{state_key}_{slot}",
+      "slots": ["city", "port", "mine", "farm", "wood"],
+      "note": "map_data 里 city=\"xRRGGBB\" 是省份锚点，不是 loc key",
+      "examples": ["STATE_SVEALAND + city → HUB_NAME_STATE_SVEALAND_city"]
+    },
+    {
+      "id": "hub_name_culture",
+      "direction": ["forward"],
+      "template": "HUB_NAME_{state_key}_{slot}_{culture}",
+      "note": "常由 customizable_localization 选择；默认名仍是无 culture 后缀那条"
+    },
+    {
+      "id": "common_suffix",
+      "direction": ["forward"],
+      "templates": ["{key}_desc", "{key}_name", "{key}_tt", "{key}_tooltip"],
+      "examples": ["law_technocracy_desc", "concept_presence_desc"]
+    },
+    {
+      "id": "country_adj",
+      "direction": ["forward"],
+      "template": "{tag}_ADJ",
+      "examples": ["FRA_ADJ"]
+    },
+    {
+      "id": "dollar_ref",
+      "direction": ["expand"],
+      "rule": "使用时：value 内 $OTHER_KEY$ → 查同 lang 的 OTHER_KEY 并递归展开；库中仍存含 $…$ 的原文",
+      "examples": ["$concept_world_market_hub$", "$HUB_NAME_STATE_VOLHYNIA_city$"]
+    },
+    {
+      "id": "gui_concept_token",
+      "direction": ["expand"],
+      "rule": "[concept_x] / Concept('concept_x', ...) 语义上对应 loc key concept_x（展示层，可选展开）"
+    },
+    {
+      "id": "query_alias",
+      "direction": ["reverse"],
+      "rule": "人话别名表 query_aliases.json：命中短语时优先 suggest 实体，不依赖模糊 loc",
+      "examples": ["义务教育 → institution_schools + law_compulsory_primary_school"]
+    }
+  ],
+  "non_modes": [
+    "禁止把任意子串相等当作正式关联（易误伤）",
+    "省份色号 xRRGGBB 不作为地名 loc key"
+  ]
+}

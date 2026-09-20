@@ -1,0 +1,21 @@
+{
+  "schema": "patchouli.mods_catalog.v2",
+  "workshop_app": 394360,
+  "default_workshop_root": "~/.steam/steam/steamapps/workshop/content/394360",
+  "mods": [
+    {
+      "id": "1521695605",
+      "short": "KR",
+      "name": "Kaiserreich",
+      "aliases": [
+        "KR",
+        "kr",
+        "Kaiserreich"
+      ],
+      "category": "common",
+      "loc_packs": [
+        "2946487287"
+      ]
+    }
+  ]
+}

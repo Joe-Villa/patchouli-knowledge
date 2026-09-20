@@ -1,0 +1,164 @@
+{
+  "schema": "patchouli.routing_table.v2",
+  "notes": [
+    "薄路由：问题类型 → 优先资产。不是教材，只服务「找」。",
+    "流程惯例：人话 → localization（精确/FTS）→ loc_entity_index → 对应 registry → 读原文块",
+    "命中路由后 2～3 轮内必须打开 prefer 中的文件；禁止只在 notes 里点名路径却不读",
+    "开局 AI 策略：common/history/ai/00_strategy.txt 的 c:TAG，不是 history/countries",
+    "机构满级数值：机构本体常几乎空；效果在对应法律的 institution_modifier，按投入等级叠加",
+    "聚合/排名题：用 run_code；结果以 entity_type=computation 的 text 提交，勿只写 notes"
+  ],
+  "routes": [
+    {
+      "id": "aggregate_stats",
+      "keywords": [
+        "人口最多",
+        "总人口",
+        "开局人口",
+        "起始人口",
+        "前10",
+        "前十",
+        "排名",
+        "最多的",
+        "最少的",
+        "有多少个STATE",
+        "有多少个州",
+        "批量统计",
+        "求和"
+      ],
+      "prefer": [
+        "path:common/history/pops/",
+        "run_code",
+        "localization"
+      ],
+      "hints": [
+        "开局 STATE 人口在 common/history/pops/*.txt：s:STATE_* 下各 create_pop 的 size 求和",
+        "跨文件排名/总和/计数必须用 run_code 解析 /game，print 完整结果表",
+        "submit：items 一条 role=primary entity_type=computation text=stdout；coverage=sufficient",
+        "不要为每个 STATE 做 read_block；history 嵌套块常切不到",
+        "100_pops_example.txt 等示例文件若全是注释则跳过"
+      ]
+    },
+    {
+      "id": "ai_strategy_start",
+      "keywords": [
+        "AI策略",
+        "ai策略",
+        "AI 策略",
+        "开局策略",
+        "set_strategy",
+        "反对哪些利益集团",
+        "反对利益集团",
+        "anti_interest",
+        "pro_interest"
+      ],
+      "prefer": [
+        "path:common/history/ai/00_strategy.txt",
+        "common_registry:（先确认 tag）",
+        "path:common/ai_strategies/",
+        "localization"
+      ],
+      "hints": [
+        "国家开局策略在 common/history/ai/00_strategy.txt：c:TAG ?= { set_strategy = ... }",
+        "history/countries 通常没有 set_strategy",
+        "反对/支持 IG 在 common/ai_strategies/ 对应策略块的 anti_interest_groups / pro_interest_groups",
+        "history 壳是 COUNTRIES={ c:TAG ?= {：对 TAG 用 grep/read_lines，少用顶层 read_block"
+      ]
+    },
+    {
+      "id": "institution",
+      "keywords": [
+        "机构",
+        "institution",
+        "满级",
+        "投入等级",
+        "识字率",
+        "义务教育",
+        "教育机构"
+      ],
+      "prefer": [
+        "localization",
+        "common_registry:institutions",
+        "common_registry:laws",
+        "path:common/defines/00_defines.txt"
+      ],
+      "hints": [
+        "「义务教育」常被说成机构，实际：机构 institution_schools 中文名是「教育」；法律 law_compulsory_primary_school 是「义务小学」（只加最大投入等级）",
+        "识字率等多在教育体系法律的 institution_modifier（如 state_literacy_growth_add），按机构投入等级叠加",
+        "MAX_INSTITUTION_INVESTMENT 在 common/defines/00_defines.txt；法律可 country_institution_*_max_investment_add",
+        "已拿到每级修正+最大等级相关块 → coverage=sufficient，notes 写明满级=每级×等级，勿因文件无「满级一行」就 partial"
+      ]
+    },
+    {
+      "id": "building",
+      "keywords": ["建筑", "工厂", "产能", "building"],
+      "prefer": ["common_registry:buildings", "loc_entity_index", "localization"]
+    },
+    {
+      "id": "law",
+      "keywords": ["法律", "法案", "law"],
+      "prefer": ["common_registry:laws", "loc_entity_index", "localization"]
+    },
+    {
+      "id": "technology",
+      "keywords": ["科技", "技术", "发明", "tech", "technology"],
+      "prefer": ["common_registry:technologies", "common_registry:eras", "loc_entity_index"]
+    },
+    {
+      "id": "event",
+      "keywords": ["事件", "event"],
+      "prefer": ["events_registry", "loc_entity_index", "localization"]
+    },
+    {
+      "id": "state",
+      "keywords": ["地区", "州", "state", "省份"],
+      "prefer": ["map_data_registry", "hub_anchors", "loc_entity_index", "localization"]
+    },
+    {
+      "id": "hub_city",
+      "keywords": ["城市", "枢纽", "港口", "hub", "city", "port"],
+      "prefer": ["loc_entity_index", "hub_anchors", "map_data_registry", "localization"]
+    },
+    {
+      "id": "goods",
+      "keywords": ["商品", "货物", "goods"],
+      "prefer": ["common_registry:goods", "loc_entity_index"]
+    },
+    {
+      "id": "production_method",
+      "keywords": ["生产方式", "PM", "production method"],
+      "prefer": ["common_registry:production_methods", "common_registry:production_method_groups"]
+    },
+    {
+      "id": "diplomatic",
+      "keywords": ["外交", "宣战", "条约", "diplomatic", "war goal"],
+      "prefer": ["common_registry:diplomatic_actions", "common_registry:war_goal_types", "common_registry:treaty_articles"]
+    },
+    {
+      "id": "interest_group",
+      "keywords": ["利益集团", "IG", "interest group"],
+      "prefer": ["common_registry:interest_groups", "common_registry:ideologies"]
+    },
+    {
+      "id": "generic_script",
+      "keywords": ["效果", "触发器", "scripted", "modifier"],
+      "prefer": ["common_registry:scripted_effects", "common_registry:scripted_triggers", "common_registry:static_modifiers"]
+    },
+    {
+      "id": "fallback",
+      "keywords": [],
+      "prefer": ["localization", "loc_entity_index", "common_registry", "events_registry", "map_data_registry"]
+    }
+  ],
+  "assets": {
+    "localization": "game/localization.sqlite",
+    "loc_entity_index": "game/loc_entity_index.sqlite",
+    "common_registry": "game/common_registry.sqlite",
+    "events_registry": "game/events_registry.sqlite",
+    "map_data_registry": "game/map_data_registry.sqlite",
+    "hub_anchors": "game/hub_anchors.sqlite",
+    "tree": "game/_tree/",
+    "assoc_rules": "localization_assoc.json",
+    "query_aliases": "query_aliases.json"
+  }
+}

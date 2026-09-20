@@ -1,0 +1,77 @@
+{
+  "schema": "patchouli.query_aliases.v1",
+  "notes": [
+    "人话别名 → 建议实体/路径。loc_search / route_query 可附带，纠正常见错名。",
+    "不替代 registry；只作检索提示。"
+  ],
+  "aliases": [
+    {
+      "phrases": ["义务教育", "义务教育机构"],
+      "suggest": [
+        {
+          "key": "institution_schools",
+          "kind": "institution",
+          "label": "教育",
+          "note": "机构中文正式名是「教育」，不是「义务教育」"
+        },
+        {
+          "key": "law_compulsory_primary_school",
+          "kind": "law",
+          "label": "义务小学",
+          "note": "儿童权利组法律；提高 institution_schools 最大投入等级，本身无识字率字段"
+        },
+        {
+          "key": "law_public_schools",
+          "kind": "law",
+          "label": "公立学校",
+          "note": "教育体系法律之一；institution_modifier 含 state_literacy_growth_add 等"
+        }
+      ],
+      "prefer_paths": [
+        "common/institutions/00_institutions.txt",
+        "common/laws/02_childrens_rights.txt",
+        "common/laws/01_education_system.txt",
+        "common/defines/00_defines.txt"
+      ]
+    },
+    {
+      "phrases": ["教育机构", "学校机构"],
+      "suggest": [
+        {
+          "key": "institution_schools",
+          "kind": "institution",
+          "label": "教育",
+          "note": "效果多在教育体系法律的 institution_modifier"
+        }
+      ]
+    },
+    {
+      "phrases": ["开局人口", "起始人口", "游戏开始人口", "开局总人口"],
+      "suggest": [
+        {
+          "key": "computation_result",
+          "kind": "computation",
+          "label": "history pops 聚合",
+          "note": "人口在 common/history/pops/；用 run_code 按 STATE 对 create_pop.size 求和再排名"
+        }
+      ],
+      "prefer_paths": ["common/history/pops/"]
+    },
+    {
+      "phrases": ["奥斯曼", "奥斯曼帝国", "土耳其帝国"],
+      "suggest": [
+        {
+          "key": "TUR",
+          "kind": "country",
+          "label": "奥斯曼帝国",
+          "note": "tag 是 TUR 不是 OTT；开局 AI 见 history/ai/00_strategy.txt"
+        }
+      ],
+      "prefer_paths": [
+        "common/history/ai/00_strategy.txt",
+        "common/history/countries/tur - ottoman empire.txt",
+        "common/ai_strategies/"
+      ]
+    }
+  ]
+}

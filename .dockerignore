@@ -59,11 +59,13 @@ service/1837/scripts/
 service/1838/scripts/
 deploy/welcome/
 
-# 人读文档（Agent 规则 .txt / structure.md 保留）
-**/README.md
-**/README
+# 人读文档不进镜像（Agent 规则 .txt / structure.md 保留）
+/README.md
+/docs/
+/examples/
 **/USAGE.md
 **/DIFFERENCES.md
+service/**/README.md
 tool/**/README.md
 
 # OS / IDE

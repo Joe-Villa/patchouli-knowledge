@@ -1,0 +1,17 @@
+{
+  "schema": "patchouli.mods_catalog.v2",
+  "workshop_app": 529340,
+  "default_workshop_root": "~/.steam/steam/steamapps/workshop/content/529340",
+  "mods": [
+    {
+      "id": "0000000000",
+      "short": "EXAMPLE",
+      "name": "Example Mod Name",
+      "aliases": [
+        "EXAMPLE",
+        "example mod"
+      ],
+      "category": "common"
+    }
+  ]
+}
