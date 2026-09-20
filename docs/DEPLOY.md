@@ -10,7 +10,7 @@
 - **合法持有的** Vic3（AppID `529340`）和/或 HOI4（AppID `394360`）游戏文件；模组按需从工坊订阅后拷贝
 - 磁盘：完整语料可达数十 GB；仅 welcome / cards 等轻服务可少很多
 
-克隆本仓库后，**不要**期望开箱即有 `database/` 与 `log/` 内容——这两类默认被 `.gitignore` 排除。
+克隆后需自行创建并填入下方的 `database/`、`log/` 目录；仓库只提供程序与示例配置。
 
 ## 1. 目录约定
 
@@ -268,18 +268,9 @@ python3 -m web
 按你实际对外暴露的端口放行，例如：`80`、`1836`、`1837`、`1838`、`1910`、`1936`、`1939`。  
 `1453` 建议仅内网或 VPN；不要挂到欢迎页。
 
-## 7. 上传 GitHub 前自检
+## 7. 启动前核对
 
-```bash
-# 不应出现在待提交列表
-git status --short | grep -E '^(.. )?(database|log|file|TODO)/' && echo '还有私货' || echo 'OK'
-
-# 不应提交真实密钥
-git grep -nE 'sk-[a-zA-Z0-9]{8,}|CONSOLE_PASSWORD=.+' -- ':!*.example*' || true
-git check-ignore -v deploy/.env database log file
-
-# 确认 example 可被追踪
-git add -n README.md docs examples deploy/.env.example
-```
-
-首次推远程前：选好 `LICENSE`、清掉 `deploy/.env` 与各服务下真实 `.env`、确认 `CONSOLE_PASSWORD` 仅为占位。
+- [ ] 已复制 `deploy/.env.example` → `deploy/.env`，并填写 `DEEPSEEK_API_KEY`
+- [ ] 已将 `CONSOLE_PASSWORD` 改成自己的口令
+- [ ] 所需服务对应的 `database/` 路径已按第 1 节放好
+- [ ] `mods_catalog.json`（若用模组）已按 `examples/` 改好 workshop id

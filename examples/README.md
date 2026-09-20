@@ -9,5 +9,3 @@
 | `database/overview/steam/529340/vanilla/*.json` | Vic3 数据描述：loc 关联约定、查询别名、薄路由表 |
 
 完整部署步骤见 [docs/DEPLOY.md](../docs/DEPLOY.md)。
-
-不要把真实 `database/data`（游戏原文）、`*.sqlite`、`log/` 放进本目录再提交。
